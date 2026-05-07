@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="login-page">
     <main class="login-shell">
         <section class="login-panel" aria-label="Sign in">
-            <div class="brand-mark">TJ</div>
+            <div class="brand-mark brand-mark-wide">TJT Trucking</div>
             <h1>Administrator Login</h1>
             <p class="login-subtitle">Sign in to continue to the admin workspace.</p>
 

@@ -2,12 +2,15 @@
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/accounts.php';
+require_once __DIR__ . '/../includes/master_data.php';
 
 require_login();
 
 $pageTitle = 'Dashboard';
 $activeNav = 'dashboard';
 $counts = account_counts();
+$customerCounts = customer_counts();
+$employeeCounts = employee_counts();
 
 require APP_ROOT . '/partials/admin_header.php';
 ?>
@@ -15,7 +18,7 @@ require APP_ROOT . '/partials/admin_header.php';
     <div>
         <p class="eyebrow">IIS-TJT Movers</p>
         <h2>Welcome, <?php echo h(current_user()['name']); ?></h2>
-        <p>The new system foundation now uses database-backed administrator accounts, protected sessions, CSRF checks, and environment-based configuration.</p>
+        <p>The administrator workspace now starts with controlled accounts plus the customer and employee master data needed by booking, dispatch, billing, payroll, and reports.</p>
     </div>
     <a class="btn btn-primary" href="<?php echo h(app_url('administrator/accounts.php')); ?>">Manage Accounts</a>
 </section>
@@ -27,14 +30,14 @@ require APP_ROOT . '/partials/admin_header.php';
         <p>Accounts allowed to sign in.</p>
     </article>
     <article class="stat-card">
-        <span class="stat-label">Total Accounts</span>
-        <strong><?php echo h($counts['total']); ?></strong>
-        <p>Administrator-managed account records.</p>
+        <span class="stat-label">Customers</span>
+        <strong><?php echo h($customerCounts['total']); ?></strong>
+        <p>Client records available for operations setup.</p>
     </article>
     <article class="stat-card">
-        <span class="stat-label">Status</span>
-        <strong>Ready</strong>
-        <p>Database and admin account module are in place.</p>
+        <span class="stat-label">Employees & Crews</span>
+        <strong><?php echo h($employeeCounts['total']); ?></strong>
+        <p>People records for HR, dispatch, and payroll.</p>
     </article>
 </section>
 
@@ -52,13 +55,13 @@ require APP_ROOT . '/partials/admin_header.php';
                 <strong>Account Management</strong>
                 <span>Create, update, activate, deactivate, and reset administrator-managed accounts.</span>
             </a>
-            <a href="#">
-                <strong>Reports</strong>
-                <span>Next foundation for management, finance, and operations reports.</span>
+            <a href="<?php echo h(app_url('administrator/employees.php')); ?>">
+                <strong>Employee Management</strong>
+                <span>Maintain regular employees, drivers, helpers, and fleet owners.</span>
             </a>
-            <a href="#">
-                <strong>Settings</strong>
-                <span>Store app-level preferences and system options.</span>
+            <a href="<?php echo h(app_url('administrator/customers.php')); ?>">
+                <strong>Customer Management</strong>
+                <span>Maintain customers used by rates, bookings, billing, and collection.</span>
             </a>
         </div>
     </article>
@@ -73,7 +76,7 @@ require APP_ROOT . '/partials/admin_header.php';
 
         <ul class="check-list">
             <li>Define exact permissions per department role.</li>
-            <li>Add customer, fleet, driver, and route master data.</li>
+            <li>Add fleet, rates, delivery type, and route master data.</li>
             <li>Create trip lifecycle status tables.</li>
             <li>Add audit views for important account actions.</li>
         </ul>

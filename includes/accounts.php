@@ -45,9 +45,37 @@ function find_account_by_id($id)
     return $stmt->fetch() ?: null;
 }
 
-function list_accounts()
+function list_accounts($search = '', $role = '', $status = '')
 {
-    $stmt = db()->query('SELECT * FROM accounts ORDER BY role ASC, full_name ASC');
+    $sql = 'SELECT * FROM accounts';
+    $where = [];
+    $params = [];
+
+    if ($search !== '') {
+        $where[] = '(full_name LIKE :search_name OR username LIKE :search_username OR email LIKE :search_email)';
+        $searchTerm = '%' . trim($search) . '%';
+        $params['search_name'] = $searchTerm;
+        $params['search_username'] = $searchTerm;
+        $params['search_email'] = $searchTerm;
+    }
+
+    if ($role !== '' && in_array($role, account_roles(), true)) {
+        $where[] = 'role = :role';
+        $params['role'] = $role;
+    }
+
+    if ($status !== '' && in_array($status, account_statuses(), true)) {
+        $where[] = 'status = :status';
+        $params['status'] = $status;
+    }
+
+    if ($where) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+
+    $sql .= ' ORDER BY role ASC, full_name ASC LIMIT 300';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
 
     return $stmt->fetchAll();
 }
@@ -238,6 +266,22 @@ function update_account_status($id, $status, $updatedBy = null)
     ]);
 
     log_account_activity($updatedBy, $id, 'status_changed', 'Account status changed to ' . $status . '.');
+}
+
+function delete_account($id, $deletedBy = null)
+{
+    $account = find_account_by_id($id);
+
+    if (!$account) {
+        return false;
+    }
+
+    log_account_activity($deletedBy, $id, 'deleted', 'Account deleted by administrator.');
+
+    $stmt = db()->prepare('DELETE FROM accounts WHERE id = :id');
+    $stmt->execute(['id' => (int) $id]);
+
+    return $stmt->rowCount() > 0;
 }
 
 function update_account_last_login($id)

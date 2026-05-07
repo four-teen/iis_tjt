@@ -1,8 +1,81 @@
 <?php
 
+require_once APP_ROOT . '/includes/icons.php';
+
 $user = current_user();
 $pageTitle = $pageTitle ?? 'Administrator';
 $activeNav = $activeNav ?? 'dashboard';
+$navGroups = [
+    'Control Center' => [
+        [
+            'key' => 'dashboard',
+            'label' => 'Dashboard',
+            'icon' => 'dashboard',
+            'url' => app_url('administrator/index.php'),
+        ],
+    ],
+    'Administration' => [
+        [
+            'key' => 'accounts',
+            'label' => 'Account Management',
+            'icon' => 'shield',
+            'url' => app_url('administrator/accounts.php'),
+        ],
+    ],
+    'Master Data' => [
+        [
+            'key' => 'employees',
+            'label' => 'Employees & Crews',
+            'icon' => 'users',
+            'url' => app_url('administrator/employees.php'),
+        ],
+        [
+            'key' => 'customers',
+            'label' => 'Customer Management',
+            'icon' => 'building',
+            'url' => app_url('administrator/customers.php'),
+        ],
+    ],
+    'Operations Setup' => [
+        [
+            'key' => 'locations',
+            'label' => 'Locations',
+            'icon' => 'map',
+            'url' => '#',
+            'disabled' => true,
+        ],
+        [
+            'key' => 'rates',
+            'label' => 'Rates & Delivery Types',
+            'icon' => 'clipboard',
+            'url' => '#',
+            'disabled' => true,
+        ],
+        [
+            'key' => 'fleet',
+            'label' => 'Fleet',
+            'icon' => 'truck',
+            'url' => '#',
+            'disabled' => true,
+        ],
+    ],
+    'Monitoring' => [
+        [
+            'key' => 'reports',
+            'label' => 'Reports',
+            'icon' => 'chart',
+            'url' => '#',
+            'disabled' => true,
+        ],
+        [
+            'key' => 'settings',
+            'label' => 'System Settings',
+            'icon' => 'settings',
+            'url' => '#',
+            'disabled' => true,
+        ],
+    ],
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -16,27 +89,34 @@ $activeNav = $activeNav ?? 'dashboard';
     <div class="admin-shell">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-brand">
-                <span class="brand-mark small">TJ</span>
-                <span><?php echo h($app['name']); ?></span>
+                <span class="brand-mark small">TJT</span>
+                <span>TJT Trucking</span>
             </div>
 
             <nav class="sidebar-nav" aria-label="Administrator navigation">
-                <a class="<?php echo $activeNav === 'dashboard' ? 'active' : ''; ?>" href="<?php echo h(app_url('administrator/index.php')); ?>">
-                    <span class="nav-icon">D</span>
-                    Dashboard
-                </a>
-                <a class="<?php echo $activeNav === 'accounts' ? 'active' : ''; ?>" href="<?php echo h(app_url('administrator/accounts.php')); ?>">
-                    <span class="nav-icon">A</span>
-                    Accounts
-                </a>
-                <a href="#">
-                    <span class="nav-icon">R</span>
-                    Reports
-                </a>
-                <a href="#">
-                    <span class="nav-icon">S</span>
-                    Settings
-                </a>
+                <?php foreach ($navGroups as $groupLabel => $items): ?>
+                    <div class="sidebar-section">
+                        <p class="sidebar-heading"><?php echo h($groupLabel); ?></p>
+                        <?php foreach ($items as $item): ?>
+                            <?php
+                            $isActive = $activeNav === $item['key'];
+                            $isDisabled = !empty($item['disabled']);
+                            $className = trim(($isActive ? 'active ' : '') . ($isDisabled ? 'disabled' : ''));
+                            ?>
+                            <?php if ($isDisabled): ?>
+                                <span class="nav-link <?php echo h($className); ?>" aria-disabled="true">
+                                    <span class="nav-icon"><?php echo icon($item['icon']); ?></span>
+                                    <span><?php echo h($item['label']); ?></span>
+                                </span>
+                            <?php else: ?>
+                                <a class="<?php echo h($className); ?>" href="<?php echo h($item['url']); ?>">
+                                    <span class="nav-icon"><?php echo icon($item['icon']); ?></span>
+                                    <span><?php echo h($item['label']); ?></span>
+                                </a>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endforeach; ?>
             </nav>
         </aside>
 
