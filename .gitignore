@@ -1,0 +1,5 @@
+.env
+/storage/sessions/*
+!/storage/sessions/.gitkeep
+/storage/logs/*
+*.log
