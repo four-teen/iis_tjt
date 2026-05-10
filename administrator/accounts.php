@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/bulk_actions.php';
 
 require_role('Administrator');
 
@@ -8,13 +9,15 @@ $pageTitle = 'Account Management';
 $activeNav = 'accounts';
 $currentUser = current_user();
 $currentUserId = (int) ($currentUser['id'] ?? 0);
-$search = trim($_GET['search'] ?? '');
-$roleFilter = $_GET['role'] ?? '';
-$statusFilter = $_GET['status'] ?? '';
 
 function selected_attr($value, $current)
 {
     return (string) $value === (string) $current ? ' selected' : '';
+}
+
+function checked_attr($value, $current)
+{
+    return in_array($value, (array) $current, true) ? ' checked' : '';
 }
 
 function account_badge_class($status)
@@ -29,6 +32,13 @@ function account_role_badge_class($role)
         'Manager' => 'badge badge-warning',
         'Finance' => 'badge badge-info',
         'Operations' => 'badge badge-success',
+        'Human Resource' => 'badge badge-info',
+        'Billing' => 'badge badge-warning',
+        'Budget' => 'badge badge-warning',
+        'Coordinator' => 'badge badge-success',
+        'Customer Service' => 'badge badge-info',
+        'Fleet Management' => 'badge badge-success',
+        'Inventory' => 'badge badge-muted',
     ];
 
     return $classes[$role] ?? 'badge badge-muted';
@@ -49,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'full_name' => $_POST['full_name'] ?? '',
                 'username' => $_POST['username'] ?? '',
                 'email' => $_POST['email'] ?? '',
-                'role' => $_POST['role'] ?? '',
+                'roles' => $_POST['roles'] ?? [],
                 'status' => $_POST['status'] ?? 'active',
                 'password' => $_POST['password'] ?? '',
                 'must_change_password' => 1,
@@ -73,16 +83,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'full_name' => $_POST['full_name'] ?? '',
                     'username' => $_POST['username'] ?? '',
                     'email' => $_POST['email'] ?? '',
-                    'role' => $_POST['role'] ?? '',
+                    'roles' => $_POST['roles'] ?? [],
                     'status' => $_POST['status'] ?? 'active',
                 ];
                 $errors = validate_account_data($data, 'update', $accountId);
+                $selectedRoles = normalize_account_roles($data['roles']);
 
                 if ($accountId === $currentUserId && $data['status'] !== 'active') {
                     $errors[] = 'You cannot deactivate your own account.';
                 }
 
-                if ($accountId === $currentUserId && $data['role'] !== 'Administrator') {
+                if ($accountId === $currentUserId && !in_array('Administrator', $selectedRoles, true)) {
                     $errors[] = 'You cannot remove Administrator access from your own account.';
                 }
 
@@ -117,6 +128,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 flash('error', 'Account could not be deleted.');
             }
+        } elseif ($action === 'bulk_delete') {
+            $ids = normalize_bulk_ids($_POST['ids'] ?? []);
+            $result = bulk_delete_records($ids, 'find_account_by_id', function ($accountId) use ($currentUserId) {
+                if ((int) $accountId === (int) $currentUserId) {
+                    throw new RuntimeException('Your signed-in account was skipped.');
+                }
+
+                return delete_account($accountId, $currentUserId);
+            });
+
+            flash_bulk_delete_result('account', $result);
         }
     } catch (Throwable $error) {
         flash('error', 'Account action failed: ' . $error->getMessage());
@@ -127,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $roles = account_roles();
 $statuses = account_statuses();
-$accounts = list_accounts($search, $roleFilter, $statusFilter);
+$accounts = list_accounts();
 $counts = account_counts();
 $messages = flash_messages();
 
@@ -139,25 +161,14 @@ require APP_ROOT . '/partials/admin_header.php';
         <h2>Accounts</h2>
         <p>Control who can enter the system, assign department roles, reset temporary passwords, and keep inactive users from signing in.</p>
     </div>
-    <button type="button" class="btn btn-primary" data-modal-open="create-account-modal"><?php echo icon('plus'); ?> New Account</button>
-</section>
-
-<section class="stats-grid" aria-label="Account overview">
-    <article class="stat-card">
-        <span class="stat-label">Total Accounts</span>
-        <strong><?php echo h($counts['total']); ?></strong>
-        <p>All administrator-managed users.</p>
-    </article>
-    <article class="stat-card">
-        <span class="stat-label">Active</span>
-        <strong><?php echo h($counts['active']); ?></strong>
-        <p>Accounts allowed to sign in.</p>
-    </article>
-    <article class="stat-card">
-        <span class="stat-label">Inactive</span>
-        <strong><?php echo h($counts['inactive']); ?></strong>
-        <p>Accounts blocked from login.</p>
-    </article>
+    <div class="hero-actions">
+        <button type="button" class="btn btn-primary" data-modal-open="create-account-modal"><?php echo icon('plus'); ?> New Account</button>
+        <div class="count-badges" aria-label="Account overview">
+            <span class="count-badge">Total <strong><?php echo h($counts['total']); ?></strong></span>
+            <span class="count-badge count-badge-success">Active <strong><?php echo h($counts['active']); ?></strong></span>
+            <span class="count-badge count-badge-muted">Inactive <strong><?php echo h($counts['inactive']); ?></strong></span>
+        </div>
+    </div>
 </section>
 
 <?php foreach ($messages as $message): ?>
@@ -175,65 +186,68 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="get" action="<?php echo h(app_url('administrator/accounts.php')); ?>" class="filter-bar">
-            <input name="search" type="search" value="<?php echo h($search); ?>" placeholder="Search name, username, or email">
-            <select name="role">
-                <option value="">All Roles</option>
-                <?php foreach ($roles as $role): ?>
-                    <option value="<?php echo h($role); ?>"<?php echo selected_attr($role, $roleFilter); ?>><?php echo h($role); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <select name="status">
-                <option value="">All Statuses</option>
-                <?php foreach ($statuses as $status): ?>
-                    <option value="<?php echo h($status); ?>"<?php echo selected_attr($status, $statusFilter); ?>><?php echo h(ucfirst($status)); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="btn btn-light">Filter</button>
+        <form method="post" action="<?php echo h(app_url('administrator/accounts.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="accounts">
+            <?php echo csrf_field(); ?>
+            <input type="hidden" name="action" value="bulk_delete">
+
+            <div class="bulk-table-toolbar">
+                <button type="submit" class="btn btn-danger btn-sm btn-icon" data-bulk-delete-button disabled><?php echo icon('trash'); ?> Delete Selected</button>
+                <span data-bulk-delete-count>0 selected</span>
+            </div>
+
+            <div class="table-wrap record-scroll" data-infinite-scroll>
+                <table class="data-table record-table">
+                    <thead>
+                        <tr>
+                            <th class="select-column"><input type="checkbox" data-bulk-delete-toggle aria-label="Select all accounts"></th>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Roles</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="account-records" data-infinite-list data-page-size="20">
+                        <?php foreach ($accounts as $account): ?>
+                            <tr data-infinite-item>
+                                <td class="select-column">
+                                    <input type="checkbox" name="ids[]" value="<?php echo h($account['id']); ?>" data-bulk-delete-item aria-label="Select <?php echo h($account['full_name']); ?>"<?php echo (int) $account['id'] === $currentUserId ? ' disabled title="You cannot delete your signed-in account."' : ''; ?>>
+                                </td>
+                                <td>
+                                    <strong><?php echo h($account['full_name']); ?></strong>
+                                    <span><?php echo h($account['email'] ?: 'No email'); ?></span>
+                                </td>
+                                <td><?php echo h($account['username']); ?></td>
+                                <td>
+                                    <div class="badge-list">
+                                        <?php foreach ($account['roles'] as $role): ?>
+                                            <span class="<?php echo h(account_role_badge_class($role)); ?>"><?php echo h($role); ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </td>
+                                <td><span class="<?php echo h(account_badge_class($account['status'])); ?>"><?php echo h(ucfirst($account['status'])); ?></span></td>
+                                <td><?php echo $account['last_login_at'] ? h(date('M d, Y h:i A', strtotime($account['last_login_at']))) : 'Never'; ?></td>
+                                <td class="table-actions">
+                                    <div class="btn-group action-group" role="group" aria-label="Account actions">
+                                        <button type="button" class="btn btn-warning btn-sm btn-icon" data-modal-open="edit-account-<?php echo h($account['id']); ?>"><?php echo icon('edit'); ?> Edit</button>
+                                        <button type="button" class="btn btn-light btn-sm btn-icon" data-modal-open="password-account-<?php echo h($account['id']); ?>"><?php echo icon('key'); ?> Password</button>
+                                        <button type="button" class="btn btn-danger btn-sm btn-icon" data-modal-open="delete-account-<?php echo h($account['id']); ?>"<?php echo (int) $account['id'] === $currentUserId ? ' disabled' : ''; ?>><?php echo icon('trash'); ?> Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+
+                        <?php if (!$accounts): ?>
+                            <tr class="empty-row">
+                                <td colspan="7">No account records found.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <p class="table-status" data-infinite-status="account-records"></p>
         </form>
-
-        <div class="table-wrap record-scroll" data-infinite-scroll>
-            <table class="data-table record-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Last Login</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="account-records" data-infinite-list data-page-size="20">
-                    <?php foreach ($accounts as $account): ?>
-                        <tr data-infinite-item>
-                            <td>
-                                <strong><?php echo h($account['full_name']); ?></strong>
-                                <span><?php echo h($account['email'] ?: 'No email'); ?></span>
-                            </td>
-                            <td><?php echo h($account['username']); ?></td>
-                            <td><span class="<?php echo h(account_role_badge_class($account['role'])); ?>"><?php echo h($account['role']); ?></span></td>
-                            <td><span class="<?php echo h(account_badge_class($account['status'])); ?>"><?php echo h(ucfirst($account['status'])); ?></span></td>
-                            <td><?php echo $account['last_login_at'] ? h(date('M d, Y h:i A', strtotime($account['last_login_at']))) : 'Never'; ?></td>
-                            <td class="table-actions">
-                                <div class="action-group">
-                                    <button type="button" class="btn btn-edit btn-icon" data-modal-open="edit-account-<?php echo h($account['id']); ?>"><?php echo icon('edit'); ?> Edit</button>
-                                    <button type="button" class="btn btn-warning btn-icon" data-modal-open="password-account-<?php echo h($account['id']); ?>"><?php echo icon('key'); ?> Password</button>
-                                    <button type="button" class="btn btn-danger btn-icon" data-modal-open="delete-account-<?php echo h($account['id']); ?>"<?php echo (int) $account['id'] === $currentUserId ? ' disabled' : ''; ?>><?php echo icon('trash'); ?> Delete</button>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-
-                    <?php if (!$accounts): ?>
-                        <tr class="empty-row">
-                            <td colspan="6">No account records found.</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-        <p class="table-status" data-infinite-status="account-records"></p>
     </article>
 </section>
 
@@ -261,23 +275,23 @@ require APP_ROOT . '/partials/admin_header.php';
                 <label for="email">Email</label>
                 <input id="email" name="email" type="email" maxlength="120">
 
-                <div class="form-grid">
-                    <div>
-                        <label for="role">Role</label>
-                        <select id="role" name="role">
-                            <?php foreach ($roles as $role): ?>
-                                <option value="<?php echo h($role); ?>"><?php echo h($role); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="status">Status</label>
-                        <select id="status" name="status">
-                            <?php foreach ($statuses as $status): ?>
-                                <option value="<?php echo h($status); ?>"><?php echo h(ucfirst($status)); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                <label>Roles</label>
+                <div class="role-check-grid">
+                    <?php foreach ($roles as $role): ?>
+                        <label class="role-check">
+                            <input type="checkbox" name="roles[]" value="<?php echo h($role); ?>">
+                            <span><?php echo h($role); ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+
+                <div>
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <?php foreach ($statuses as $status): ?>
+                            <option value="<?php echo h($status); ?>"><?php echo h(ucfirst($status)); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <label for="password">Temporary Password</label>
@@ -318,23 +332,23 @@ require APP_ROOT . '/partials/admin_header.php';
                     <label>Email</label>
                     <input name="email" type="email" value="<?php echo h($account['email']); ?>" maxlength="120">
 
-                    <div class="form-grid">
-                        <div>
-                            <label>Role</label>
-                            <select name="role">
-                                <?php foreach ($roles as $role): ?>
-                                    <option value="<?php echo h($role); ?>"<?php echo selected_attr($role, $account['role']); ?>><?php echo h($role); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Status</label>
-                            <select name="status">
-                                <?php foreach ($statuses as $status): ?>
-                                    <option value="<?php echo h($status); ?>"<?php echo selected_attr($status, $account['status']); ?>><?php echo h(ucfirst($status)); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                    <label>Roles</label>
+                    <div class="role-check-grid">
+                        <?php foreach ($roles as $role): ?>
+                            <label class="role-check">
+                                <input type="checkbox" name="roles[]" value="<?php echo h($role); ?>"<?php echo checked_attr($role, $account['roles']); ?>>
+                                <span><?php echo h($role); ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div>
+                        <label>Status</label>
+                        <select name="status">
+                            <?php foreach ($statuses as $status): ?>
+                                <option value="<?php echo h($status); ?>"<?php echo selected_attr($status, $account['status']); ?>><?php echo h(ucfirst($status)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
                     <div class="modal-actions">

@@ -16,6 +16,11 @@ function icon($name)
         'trash' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m6 6 1 15h10l1-15"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>',
         'plus' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
         'key' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 10a5 5 0 1 1-1.5-3.5L21 15v4h-4v-3h-3v-3l-1.5-1.5A5 5 0 0 1 14 10Z"/><path d="M7 10h.01"/></svg>',
+        'arrow-left' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
+        'save' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l2 2v16H5V3Z"/><path d="M8 3v6h8V3"/><path d="M8 21v-7h8v7"/></svg>',
+        'calendar' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v4"/><path d="M17 3v4"/><path d="M4 9h16"/><path d="M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/></svg>',
+        'id-card' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5Z"/><path d="M8 10h4"/><path d="M8 14h8"/><path d="M15 10h1"/></svg>',
+        'wrench' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 4.9 4.9L11 19.8a3 3 0 0 1-4.2-4.2l8.6-8.6Z"/><path d="m7 17 1 1"/></svg>',
     ];
 
     return $icons[$name] ?? $icons['clipboard'];

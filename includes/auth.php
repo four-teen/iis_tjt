@@ -8,7 +8,7 @@ function find_user_by_username($username)
     return find_account_by_username($username);
 }
 
-function attempt_login($username, $password)
+function verify_account_credentials($username, $password)
 {
     $user = find_user_by_username(trim($username));
 
@@ -16,19 +16,48 @@ function attempt_login($username, $password)
         return false;
     }
 
+    return $user;
+}
+
+function complete_login($user, $role)
+{
+    $roles = normalize_account_roles($user['roles'] ?? ($user['role'] ?? []));
+    $role = trim((string) $role);
+
+    if (!in_array($role, $roles, true)) {
+        return false;
+    }
+
     session_regenerate_id(true);
     update_account_last_login($user['id']);
-    log_account_activity($user['id'], $user['id'], 'login', 'Account signed in.');
+    log_account_activity($user['id'], $user['id'], 'login', 'Account signed in as ' . $role . '.');
+
+    unset($_SESSION['pending_login_account_id']);
 
     $_SESSION['user'] = [
         'id' => (int) $user['id'],
         'username' => $user['username'],
         'name' => $user['full_name'],
         'email' => $user['email'],
-        'role' => $user['role'],
+        'role' => $role,
+        'roles' => $roles,
     ];
 
     return true;
+}
+
+function attempt_login($username, $password, $role = null)
+{
+    $user = verify_account_credentials($username, $password);
+
+    if (!$user) {
+        return false;
+    }
+
+    $roles = normalize_account_roles($user['roles'] ?? ($user['role'] ?? []));
+    $selectedRole = $role ?: account_primary_role($roles);
+
+    return complete_login($user, $selectedRole);
 }
 
 function current_user()
@@ -60,10 +89,22 @@ function require_role($role)
     }
 }
 
+function user_has_role($role)
+{
+    $user = current_user();
+
+    return in_array($role, $user['roles'] ?? [], true);
+}
+
+function role_home_path($role)
+{
+    return 'administrator/index.php';
+}
+
 function redirect_if_logged_in()
 {
     if (is_logged_in()) {
-        redirect_to('administrator/index.php');
+        redirect_to(role_home_path(current_user()['role'] ?? 'Administrator'));
     }
 }
 

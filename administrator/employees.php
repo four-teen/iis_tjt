@@ -1,14 +1,13 @@
 <?php
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/bulk_actions.php';
 require_once __DIR__ . '/../includes/master_data.php';
 
 require_role('Administrator');
 
 $pageTitle = 'Employee Management';
 $activeNav = 'employees';
-$search = trim($_GET['search'] ?? '');
-$typeFilter = $_GET['type'] ?? '';
 
 function employee_selected($value, $current)
 {
@@ -94,6 +93,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 flash('error', 'Employee record could not be deleted.');
             }
+        } elseif ($action === 'bulk_delete') {
+            $ids = normalize_bulk_ids($_POST['ids'] ?? []);
+            $result = bulk_delete_records($ids, 'find_employee_by_id', function ($employeeId) {
+                return delete_employee($employeeId);
+            });
+
+            flash_bulk_delete_result('employee', $result);
         }
     } catch (Throwable $error) {
         flash('error', 'Employee action failed: ' . $error->getMessage());
@@ -103,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $employeeTypes = employee_types();
-$employees = list_employees($search, $typeFilter);
+$employees = list_employees();
 $counts = employee_counts();
 $messages = flash_messages();
 
@@ -115,25 +121,14 @@ require APP_ROOT . '/partials/admin_header.php';
         <h2>Employees & Crews</h2>
         <p>Maintain the employee, driver, helper, and fleet owner directory used by dispatch, payroll, liquidation, and reporting.</p>
     </div>
-    <button type="button" class="btn btn-primary" data-modal-open="create-employee-modal"><?php echo icon('plus'); ?> New Employee</button>
-</section>
-
-<section class="stats-grid" aria-label="Employee overview">
-    <article class="stat-card">
-        <span class="stat-label">Total Records</span>
-        <strong><?php echo h($counts['total']); ?></strong>
-        <p>Imported and newly encoded people records.</p>
-    </article>
-    <article class="stat-card">
-        <span class="stat-label">Drivers</span>
-        <strong><?php echo h($counts['1']); ?></strong>
-        <p>Available for trip assignment setup.</p>
-    </article>
-    <article class="stat-card">
-        <span class="stat-label">Helpers</span>
-        <strong><?php echo h($counts['2']); ?></strong>
-        <p>Available for trip crew assignment setup.</p>
-    </article>
+    <div class="hero-actions">
+        <button type="button" class="btn btn-primary" data-modal-open="create-employee-modal"><?php echo icon('plus'); ?> New Employee</button>
+        <div class="count-badges" aria-label="Employee overview">
+            <span class="count-badge">Total <strong><?php echo h($counts['total']); ?></strong></span>
+            <span class="count-badge count-badge-success">Drivers <strong><?php echo h($counts['1']); ?></strong></span>
+            <span class="count-badge count-badge-muted">Helpers <strong><?php echo h($counts['2']); ?></strong></span>
+        </div>
+    </div>
 </section>
 
 <?php foreach ($messages as $message): ?>
@@ -149,51 +144,52 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="get" action="<?php echo h(app_url('administrator/employees.php')); ?>" class="filter-bar">
-            <input name="search" type="search" value="<?php echo h($search); ?>" placeholder="Search employee name">
-            <select name="type">
-                <option value="">All Classifications</option>
-                <?php foreach ($employeeTypes as $code => $label): ?>
-                    <option value="<?php echo h($code); ?>"<?php echo employee_selected($code, $typeFilter); ?>><?php echo h($label); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="btn btn-light">Filter</button>
+        <form method="post" action="<?php echo h(app_url('administrator/employees.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="employees">
+            <?php echo csrf_field(); ?>
+            <input type="hidden" name="action" value="bulk_delete">
+
+            <div class="bulk-table-toolbar">
+                <button type="submit" class="btn btn-danger btn-sm btn-icon" data-bulk-delete-button disabled><?php echo icon('trash'); ?> Delete Selected</button>
+                <span data-bulk-delete-count>0 selected</span>
+            </div>
+
+            <div class="table-wrap record-scroll" data-infinite-scroll>
+                <table class="data-table record-table">
+                    <thead>
+                        <tr>
+                            <th class="select-column"><input type="checkbox" data-bulk-delete-toggle aria-label="Select all employees"></th>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Classification</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="employee-records" data-infinite-list data-page-size="20">
+                        <?php foreach ($employees as $employee): ?>
+                            <tr data-infinite-item>
+                                <td class="select-column"><input type="checkbox" name="ids[]" value="<?php echo h($employee['employee_id']); ?>" data-bulk-delete-item aria-label="Select <?php echo h(employee_display_name($employee)); ?>"></td>
+                                <td><strong><?php echo h($employee['employee_id']); ?></strong></td>
+                                <td><?php echo h(employee_display_name($employee)); ?></td>
+                                <td><span class="<?php echo h(employee_badge_class($employee['who_is'])); ?>"><?php echo h(employee_type_label($employee['who_is'])); ?></span></td>
+                                <td class="table-actions">
+                                    <div class="btn-group action-group" role="group" aria-label="Employee actions">
+                                        <button type="button" class="btn btn-warning btn-sm btn-icon" data-modal-open="edit-employee-<?php echo h($employee['employee_id']); ?>"><?php echo icon('edit'); ?> Edit</button>
+                                        <button type="button" class="btn btn-danger btn-sm btn-icon" data-modal-open="delete-employee-<?php echo h($employee['employee_id']); ?>"><?php echo icon('trash'); ?> Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+
+                        <?php if (!$employees): ?>
+                            <tr class="empty-row">
+                                <td colspan="5">No employee records found.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <p class="table-status" data-infinite-status="employee-records"></p>
         </form>
-
-        <div class="table-wrap record-scroll" data-infinite-scroll>
-            <table class="data-table record-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Classification</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="employee-records" data-infinite-list data-page-size="20">
-                    <?php foreach ($employees as $employee): ?>
-                        <tr data-infinite-item>
-                            <td><strong><?php echo h($employee['employee_id']); ?></strong></td>
-                            <td><?php echo h(employee_display_name($employee)); ?></td>
-                            <td><span class="<?php echo h(employee_badge_class($employee['who_is'])); ?>"><?php echo h(employee_type_label($employee['who_is'])); ?></span></td>
-                            <td class="table-actions">
-                                <div class="action-group">
-                                    <button type="button" class="btn btn-edit btn-icon" data-modal-open="edit-employee-<?php echo h($employee['employee_id']); ?>"><?php echo icon('edit'); ?> Edit</button>
-                                    <button type="button" class="btn btn-danger btn-icon" data-modal-open="delete-employee-<?php echo h($employee['employee_id']); ?>"><?php echo icon('trash'); ?> Delete</button>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-
-                    <?php if (!$employees): ?>
-                        <tr class="empty-row">
-                            <td colspan="4">No employee records found.</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-        <p class="table-status" data-infinite-status="employee-records"></p>
     </article>
 </section>
 

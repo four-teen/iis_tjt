@@ -1,14 +1,13 @@
 <?php
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/bulk_actions.php';
 require_once __DIR__ . '/../includes/master_data.php';
 
 require_role('Administrator');
 
 $pageTitle = 'Customer Management';
 $activeNav = 'customers';
-$search = trim($_GET['search'] ?? '');
-$statusFilter = $_GET['status'] ?? '';
 
 function customer_selected($value, $current)
 {
@@ -76,6 +75,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 flash('error', 'Customer record could not be deleted.');
             }
+        } elseif ($action === 'bulk_delete') {
+            $ids = normalize_bulk_ids($_POST['ids'] ?? []);
+            $result = bulk_delete_records($ids, 'find_customer_by_id', function ($customerId) {
+                return delete_customer($customerId);
+            });
+
+            flash_bulk_delete_result('customer', $result);
         }
     } catch (Throwable $error) {
         flash('error', 'Customer action failed: ' . $error->getMessage());
@@ -84,7 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect_to('administrator/customers.php');
 }
 
-$customers = list_customers($search, $statusFilter);
+$customers = list_customers();
+$customerRouteTotals = customer_route_totals_for_customers(array_column($customers, 'customerid'));
 $counts = customer_counts();
 $messages = flash_messages();
 
@@ -96,25 +103,14 @@ require APP_ROOT . '/partials/admin_header.php';
         <h2>Customers</h2>
         <p>Maintain client identities used by rates, booking, billing, collection, and management reports.</p>
     </div>
-    <button type="button" class="btn btn-primary" data-modal-open="create-customer-modal"><?php echo icon('plus'); ?> New Customer</button>
-</section>
-
-<section class="stats-grid" aria-label="Customer overview">
-    <article class="stat-card">
-        <span class="stat-label">Total Customers</span>
-        <strong><?php echo h($counts['total']); ?></strong>
-        <p>Imported and newly encoded customers.</p>
-    </article>
-    <article class="stat-card">
-        <span class="stat-label">Active</span>
-        <strong><?php echo h($counts['active']); ?></strong>
-        <p>Available for booking and billing setup.</p>
-    </article>
-    <article class="stat-card">
-        <span class="stat-label">Inactive</span>
-        <strong><?php echo h($counts['inactive']); ?></strong>
-        <p>Kept for history but hidden from new use later.</p>
-    </article>
+    <div class="hero-actions">
+        <button type="button" class="btn btn-primary" data-modal-open="create-customer-modal"><?php echo icon('plus'); ?> New Customer</button>
+        <div class="count-badges" aria-label="Customer overview">
+            <span class="count-badge">Total <strong><?php echo h($counts['total']); ?></strong></span>
+            <span class="count-badge count-badge-success">Active <strong><?php echo h($counts['active']); ?></strong></span>
+            <span class="count-badge count-badge-muted">Inactive <strong><?php echo h($counts['inactive']); ?></strong></span>
+        </div>
+    </div>
 </section>
 
 <?php foreach ($messages as $message): ?>
@@ -130,52 +126,55 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="get" action="<?php echo h(app_url('administrator/customers.php')); ?>" class="filter-bar">
-            <input name="search" type="search" value="<?php echo h($search); ?>" placeholder="Search SOA, customer, or address">
-            <select name="status">
-                <option value="">All Statuses</option>
-                <option value="1"<?php echo customer_selected('1', $statusFilter); ?>>Active</option>
-                <option value="0"<?php echo customer_selected('0', $statusFilter); ?>>Inactive</option>
-            </select>
-            <button type="submit" class="btn btn-light">Filter</button>
+        <form method="post" action="<?php echo h(app_url('administrator/customers.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="customers">
+            <?php echo csrf_field(); ?>
+            <input type="hidden" name="action" value="bulk_delete">
+
+            <div class="bulk-table-toolbar">
+                <button type="submit" class="btn btn-danger btn-sm btn-icon" data-bulk-delete-button disabled><?php echo icon('trash'); ?> Delete Selected</button>
+                <span data-bulk-delete-count>0 selected</span>
+            </div>
+
+            <div class="table-wrap record-scroll" data-infinite-scroll>
+                <table class="data-table record-table">
+                    <thead>
+                        <tr>
+                            <th class="select-column"><input type="checkbox" data-bulk-delete-toggle aria-label="Select all customers"></th>
+                            <th>SOA</th>
+                            <th>Customer</th>
+                            <th>Billing Address</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="customer-records" data-infinite-list data-page-size="20">
+                        <?php foreach ($customers as $customer): ?>
+                            <tr data-infinite-item>
+                                <td class="select-column"><input type="checkbox" name="ids[]" value="<?php echo h($customer['customerid']); ?>" data-bulk-delete-item aria-label="Select <?php echo h($customer['customername']); ?>"></td>
+                                <td><strong><?php echo h($customer['soa']); ?></strong></td>
+                                <td><a class="table-link" href="<?php echo h(app_url('administrator/customer_routes.php?customerid=' . $customer['customerid'])); ?>"><?php echo h($customer['customername']); ?></a></td>
+                                <td><?php echo h($customer['customeraddress']); ?></td>
+                                <td><span class="<?php echo h(customer_badge_class($customer['status'])); ?>"><?php echo h(customer_status_label($customer['status'])); ?></span></td>
+                                <td class="table-actions">
+                                    <div class="btn-group action-group" role="group" aria-label="Customer actions">
+                                        <a class="btn btn-light btn-sm btn-icon" href="<?php echo h(app_url('administrator/customer_routes.php?customerid=' . $customer['customerid'])); ?>"><?php echo icon('map'); ?> Routes (<?php echo h($customerRouteTotals[(int) $customer['customerid']] ?? 0); ?>)</a>
+                                        <button type="button" class="btn btn-warning btn-sm btn-icon" data-modal-open="edit-customer-<?php echo h($customer['customerid']); ?>"><?php echo icon('edit'); ?> Edit</button>
+                                        <button type="button" class="btn btn-danger btn-sm btn-icon" data-modal-open="delete-customer-<?php echo h($customer['customerid']); ?>"><?php echo icon('trash'); ?> Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+
+                        <?php if (!$customers): ?>
+                            <tr class="empty-row">
+                                <td colspan="6">No customer records found.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <p class="table-status" data-infinite-status="customer-records"></p>
         </form>
-
-        <div class="table-wrap record-scroll" data-infinite-scroll>
-            <table class="data-table record-table">
-                <thead>
-                    <tr>
-                        <th>SOA</th>
-                        <th>Customer</th>
-                        <th>Billing Address</th>
-                        <th>Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="customer-records" data-infinite-list data-page-size="20">
-                    <?php foreach ($customers as $customer): ?>
-                        <tr data-infinite-item>
-                            <td><strong><?php echo h($customer['soa']); ?></strong></td>
-                            <td><?php echo h($customer['customername']); ?></td>
-                            <td><?php echo h($customer['customeraddress']); ?></td>
-                            <td><span class="<?php echo h(customer_badge_class($customer['status'])); ?>"><?php echo h(customer_status_label($customer['status'])); ?></span></td>
-                            <td class="table-actions">
-                                <div class="action-group">
-                                    <button type="button" class="btn btn-edit btn-icon" data-modal-open="edit-customer-<?php echo h($customer['customerid']); ?>"><?php echo icon('edit'); ?> Edit</button>
-                                    <button type="button" class="btn btn-danger btn-icon" data-modal-open="delete-customer-<?php echo h($customer['customerid']); ?>"><?php echo icon('trash'); ?> Delete</button>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-
-                    <?php if (!$customers): ?>
-                        <tr class="empty-row">
-                            <td colspan="5">No customer records found.</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-        <p class="table-status" data-infinite-status="customer-records"></p>
     </article>
 </section>
 
