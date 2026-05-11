@@ -89,6 +89,19 @@ function require_role($role)
     }
 }
 
+function require_any_role($roles)
+{
+    require_login();
+
+    $roles = is_array($roles) ? $roles : [$roles];
+    $user = current_user();
+
+    if (!in_array($user['role'] ?? '', $roles, true)) {
+        http_response_code(403);
+        exit('Forbidden');
+    }
+}
+
 function user_has_role($role)
 {
     $user = current_user();
@@ -96,8 +109,25 @@ function user_has_role($role)
     return in_array($role, $user['roles'] ?? [], true);
 }
 
+function user_has_any_role($roles)
+{
+    $roles = is_array($roles) ? $roles : [$roles];
+
+    foreach ($roles as $role) {
+        if (user_has_role($role)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function role_home_path($role)
 {
+    if ($role === 'Customer Service') {
+        return 'administrator/customer_service.php';
+    }
+
     return 'administrator/index.php';
 }
 

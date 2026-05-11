@@ -218,6 +218,52 @@ CREATE TABLE IF NOT EXISTS tblfleet_assigned_driver_helper (
         ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS tblbooking (
+    bookingidauto INT(11) NOT NULL AUTO_INCREMENT,
+    bookingid BIGINT NOT NULL,
+    bookingdate DATETIME NOT NULL,
+    customername INT(11) NOT NULL,
+    companyrepresentative VARCHAR(80) NOT NULL,
+    origindestination INT(11) NOT NULL,
+    pickupdate DATETIME NOT NULL,
+    deliverydate DATETIME NOT NULL,
+    deliverytype INT(11) NOT NULL,
+    reservedplate INT(11) NOT NULL,
+    PRIMARY KEY (bookingidauto),
+    KEY idx_tblbooking_reference (bookingid),
+    KEY idx_tblbooking_customer (customername),
+    KEY idx_tblbooking_route (origindestination),
+    KEY idx_tblbooking_pickup (pickupdate),
+    KEY idx_tblbooking_reservedplate (reservedplate)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tblbooking_canceled (
+    bookingidauto INT(11) NOT NULL,
+    bookingid BIGINT NOT NULL,
+    bookingdate DATETIME NOT NULL,
+    customername INT(11) NOT NULL,
+    companyrepresentative VARCHAR(80) NOT NULL,
+    origindestination INT(11) NOT NULL,
+    pickupdate DATETIME NOT NULL,
+    deliverydate DATETIME NOT NULL,
+    deliverytype INT(11) NOT NULL,
+    reservedplate INT(11) NOT NULL,
+    PRIMARY KEY (bookingidauto),
+    KEY idx_tblbooking_canceled_reference (bookingid),
+    KEY idx_tblbooking_canceled_customer (customername),
+    KEY idx_tblbooking_canceled_pickup (pickupdate)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tblshipment_number (
+    shipment_number_id INT(11) NOT NULL AUTO_INCREMENT,
+    sn_reference_id BIGINT NOT NULL,
+    shipmentnumber VARCHAR(60) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (shipment_number_id),
+    UNIQUE KEY uq_tblshipment_number_reference (sn_reference_id),
+    KEY idx_tblshipment_number_value (shipmentnumber)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS tblcustomerinformation (
     customerinformationid INT(11) NOT NULL AUTO_INCREMENT,
     customerid INT(11) NOT NULL,

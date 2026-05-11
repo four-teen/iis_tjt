@@ -29,12 +29,23 @@ $navGroups = [
             'label' => 'Employees & Crews',
             'icon' => 'users',
             'url' => app_url('administrator/employees.php'),
+            'required_role' => 'Administrator',
         ],
         [
             'key' => 'customers',
             'label' => 'Customers',
             'icon' => 'building',
             'url' => app_url('administrator/customers.php'),
+            'required_role' => 'Administrator',
+        ],
+    ],
+    'Customer Service' => [
+        [
+            'key' => 'customer_service',
+            'label' => 'Bookings',
+            'icon' => 'calendar',
+            'url' => app_url('administrator/customer_service.php'),
+            'required_roles' => ['Administrator', 'Customer Service'],
         ],
     ],
     'Operations Setup' => [
@@ -43,24 +54,28 @@ $navGroups = [
             'label' => 'Locations',
             'icon' => 'map',
             'url' => app_url('administrator/locations.php'),
+            'required_role' => 'Administrator',
         ],
         [
             'key' => 'delivery_types',
             'label' => 'Delivery Types',
             'icon' => 'clipboard',
             'url' => app_url('administrator/delivery_types.php'),
+            'required_role' => 'Administrator',
         ],
         [
             'key' => 'truck_types',
             'label' => 'Truck Types',
             'icon' => 'truck',
             'url' => app_url('administrator/truck_types.php'),
+            'required_role' => 'Administrator',
         ],
         [
             'key' => 'fleet',
             'label' => 'Fleet',
             'icon' => 'truck',
             'url' => app_url('administrator/fleet.php'),
+            'required_role' => 'Administrator',
         ],
     ],
     'Monitoring' => [
@@ -107,6 +122,10 @@ $navGroups = [
                 <?php foreach ($navGroups as $groupLabel => $items): ?>
                     <?php
                     $visibleItems = array_values(array_filter($items, function ($item) use ($user) {
+                        if (!empty($item['required_roles'])) {
+                            return in_array($user['role'] ?? '', $item['required_roles'], true);
+                        }
+
                         return empty($item['required_role']) || (($user['role'] ?? '') === $item['required_role']);
                     }));
                     ?>

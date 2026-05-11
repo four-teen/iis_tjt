@@ -806,6 +806,204 @@ textarea {
     color: var(--danger);
 }
 
+.customer-service-hero {
+    border-left: 5px solid var(--accent);
+}
+
+.cs-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.cs-metric-card {
+    display: grid;
+    min-height: 132px;
+    align-content: start;
+    gap: 7px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-left: 4px solid #175cd3;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 8px 20px rgba(24, 33, 47, 0.04);
+}
+
+.cs-metric-primary {
+    border-left-color: var(--accent);
+}
+
+.cs-metric-card span,
+.cs-metric-card small {
+    color: var(--muted);
+}
+
+.cs-metric-card span {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.cs-metric-card strong {
+    font-size: 28px;
+    line-height: 1.05;
+}
+
+.customer-service-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.booking-form {
+    gap: 14px;
+}
+
+.booking-type-toggle {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.booking-type-toggle label {
+    display: flex;
+    min-height: 76px;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.booking-type-toggle label:has(input:checked) {
+    border-color: #8fc8c0;
+    background: #f2fbf9;
+    box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.18);
+}
+
+.booking-type-toggle input {
+    width: 16px;
+    height: 16px;
+    margin-top: 3px;
+    accent-color: var(--primary);
+}
+
+.booking-type-toggle span {
+    display: grid;
+    gap: 3px;
+}
+
+.booking-type-toggle small {
+    color: var(--muted);
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+.booking-preview-panel {
+    position: sticky;
+    top: 18px;
+    align-self: start;
+}
+
+.booking-preview-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.booking-preview-list div {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.booking-preview-list div:last-child {
+    border-bottom: 0;
+}
+
+.booking-preview-list dt {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.booking-preview-list dd {
+    margin: 3px 0 0;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+
+.booking-preview-list dd span {
+    display: block;
+}
+
+.booking-rate-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.booking-rate-strip div {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #f8fbfd;
+}
+
+.booking-rate-strip span {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.booking-rate-strip strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 16px;
+    overflow-wrap: anywhere;
+}
+
+.booking-lapsed {
+    display: block;
+    width: max-content;
+    margin-top: 5px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.booking-lapsed-success {
+    background: #ecfdf5;
+    color: #067647;
+}
+
+.booking-lapsed-warning {
+    background: #fff7ed;
+    color: #b54708;
+}
+
+.booking-lapsed-danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.booking-lapsed-muted {
+    background: var(--surface-muted);
+    color: var(--muted);
+}
+
 .fleet-profile-hero {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(260px, auto);
@@ -2052,13 +2250,19 @@ textarea {
     .fleet-profile-grid,
     .fleet-profile-hero,
     .readiness-hero,
-    .readiness-board {
+    .readiness-board,
+    .customer-service-grid {
         display: grid;
         grid-template-columns: 1fr;
     }
 
-    .readiness-summary-grid {
+    .readiness-summary-grid,
+    .cs-metric-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .booking-preview-panel {
+        position: static;
     }
 
     .readiness-score-card {
@@ -2167,7 +2371,10 @@ textarea {
     .fleet-health-grid,
     .fleet-key-details,
     .fleet-spec-list,
-    .readiness-summary-grid {
+    .readiness-summary-grid,
+    .cs-metric-grid,
+    .booking-type-toggle,
+    .booking-rate-strip {
         grid-template-columns: 1fr;
     }
 

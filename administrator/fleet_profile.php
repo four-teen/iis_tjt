@@ -357,7 +357,7 @@ $messages = flash_messages();
 
 require APP_ROOT . '/partials/admin_header.php';
 ?>
-<section class="fleet-profile-hero">
+<section class="fleet-profile-hero" data-fleet-profile-page>
     <div class="fleet-hero-main">
         <span class="fleet-hero-icon"><?php echo icon('truck'); ?></span>
         <div>
@@ -383,9 +383,11 @@ require APP_ROOT . '/partials/admin_header.php';
     </div>
 </section>
 
-<?php foreach ($messages as $message): ?>
-    <div class="alert alert-<?php echo h($message['type']); ?>" role="alert"><?php echo h($message['message']); ?></div>
-<?php endforeach; ?>
+<div data-fleet-alerts>
+    <?php foreach ($messages as $message): ?>
+        <div class="alert alert-<?php echo h($message['type']); ?>" role="alert"><?php echo h($message['message']); ?></div>
+    <?php endforeach; ?>
+</div>
 
 <section class="fleet-health-grid" aria-label="Fleet compliance overview">
     <?php foreach ($complianceItems as $item): ?>
@@ -611,7 +613,7 @@ require APP_ROOT . '/partials/admin_header.php';
         </form>
     </article>
 
-    <article class="panel fleet-crew-panel">
+    <article class="panel fleet-crew-panel" data-fleet-fragment="crew-panel">
         <div class="panel-header">
             <div>
                 <p class="eyebrow">Crew Assignment</p>
@@ -624,7 +626,7 @@ require APP_ROOT . '/partials/admin_header.php';
         </div>
 
         <div class="assignment-forms fleet-assignment-forms">
-            <form method="post" action="<?php echo h(app_url($returnUrl)); ?>" class="inline-form">
+            <form method="post" action="<?php echo h(app_url($returnUrl)); ?>" class="inline-form" data-fleet-ajax-form>
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="assign_person">
                 <input type="hidden" name="employee_type" value="1">
@@ -639,7 +641,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 </select>
                 <button type="submit" class="btn btn-primary btn-sm btn-icon" <?php echo !$drivers ? 'disabled' : ''; ?>><?php echo icon('plus'); ?> Driver</button>
             </form>
-            <form method="post" action="<?php echo h(app_url($returnUrl)); ?>" class="inline-form">
+            <form method="post" action="<?php echo h(app_url($returnUrl)); ?>" class="inline-form" data-fleet-ajax-form>
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="assign_person">
                 <input type="hidden" name="employee_type" value="2">
@@ -656,7 +658,7 @@ require APP_ROOT . '/partials/admin_header.php';
             </form>
         </div>
 
-        <form method="post" action="<?php echo h(app_url($returnUrl)); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="assignments">
+        <form method="post" action="<?php echo h(app_url($returnUrl)); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="assignments" data-fleet-ajax-form>
             <?php echo csrf_field(); ?>
             <input type="hidden" name="action" value="bulk_remove_assignments">
             <div class="bulk-table-toolbar">
@@ -693,7 +695,7 @@ require APP_ROOT . '/partials/admin_header.php';
         </form>
 
         <?php foreach ($assignments as $assignment): ?>
-            <form id="remove-assignment-<?php echo h($assignment['assigned_id']); ?>" method="post" action="<?php echo h(app_url($returnUrl)); ?>" hidden>
+            <form id="remove-assignment-<?php echo h($assignment['assigned_id']); ?>" method="post" action="<?php echo h(app_url($returnUrl)); ?>" hidden data-fleet-ajax-form>
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="remove_assignment">
                 <input type="hidden" name="assigned_id" value="<?php echo h($assignment['assigned_id']); ?>">

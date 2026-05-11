@@ -73,9 +73,16 @@
 })();
 
 (function () {
-    var forms = document.querySelectorAll('[data-bulk-delete-form]');
+    function initBulkDeleteForms(root) {
+        var forms = (root || document).querySelectorAll('[data-bulk-delete-form]');
 
-    forms.forEach(function (form) {
+        forms.forEach(function (form) {
+        if (form.dataset.bulkDeleteReady) {
+            return;
+        }
+
+        form.dataset.bulkDeleteReady = '1';
+
         var toggle = form.querySelector('[data-bulk-delete-toggle]');
         var button = form.querySelector('[data-bulk-delete-button]');
         var counter = form.querySelector('[data-bulk-delete-count]');
@@ -190,12 +197,14 @@
 
         syncVisibleItems();
         updateState();
-    });
+        });
+    }
+
+    window.initBulkDeleteForms = initBulkDeleteForms;
+    initBulkDeleteForms(document);
 })();
 
 (function () {
-    var tables = document.querySelectorAll('table.record-table');
-
     function cellText(row, index) {
         var cell = row.cells[index];
 
@@ -259,12 +268,16 @@
         table.classList.add('table', 'table-striped', 'table-hover', 'align-middle');
     }
 
+    function recordTables(root) {
+        return Array.prototype.slice.call((root || document).querySelectorAll('table.record-table'));
+    }
+
     function hasOfficialDataTable() {
         return window.jQuery && window.jQuery.fn && window.jQuery.fn.DataTable;
     }
 
-    function hasPendingTables() {
-        return Array.prototype.some.call(tables, function (table) {
+    function hasPendingTables(root) {
+        return recordTables(root).some(function (table) {
             return !table.dataset.datatableReady;
         });
     }
@@ -313,8 +326,8 @@
         next(0);
     }
 
-    function initOfficialTables() {
-        tables.forEach(function (table) {
+    function initOfficialTables(root) {
+        recordTables(root).forEach(function (table) {
             if (table.dataset.datatableReady) {
                 return;
             }
@@ -368,8 +381,8 @@
         });
     }
 
-    function initFallbackTables() {
-        tables.forEach(function (table) {
+    function initFallbackTables(root) {
+        recordTables(root).forEach(function (table) {
         if (table.dataset.datatableReady) {
             return;
         }
@@ -593,19 +606,26 @@
         });
     }
 
-    if (hasOfficialDataTable()) {
-        initOfficialTables();
-        return;
-    }
-
-    window.setTimeout(initFallbackTables, 120);
-    loadOfficialDataTables(function (loaded) {
-        if (!loaded || !hasPendingTables()) {
+    function initRecordTables(root) {
+        if (hasOfficialDataTable()) {
+            initOfficialTables(root);
             return;
         }
 
-        initOfficialTables();
-    });
+        window.setTimeout(function () {
+            initFallbackTables(root);
+        }, 120);
+        loadOfficialDataTables(function (loaded) {
+            if (!loaded || !hasPendingTables(root)) {
+                return;
+            }
+
+            initOfficialTables(root);
+        });
+    }
+
+    window.initRecordTables = initRecordTables;
+    initRecordTables(document);
 })();
 
 (function () {
@@ -657,4 +677,301 @@
             scroller.addEventListener('scroll', loadMore);
         }
     });
+})();
+
+(function () {
+    if (!document.querySelector('[data-fleet-profile-page]') || !window.fetch || !window.DOMParser) {
+        return;
+    }
+
+    function crewPanel() {
+        return document.querySelector('[data-fleet-fragment="crew-panel"]');
+    }
+
+    function setFormBusy(form, submitter, isBusy) {
+        var controls = Array.prototype.slice.call(form.querySelectorAll('button, input, select, textarea'));
+
+        if (submitter && submitter.matches && submitter.matches('button, input, select, textarea') && controls.indexOf(submitter) === -1) {
+            controls.push(submitter);
+        }
+
+        controls.forEach(function (control) {
+            if (isBusy) {
+                control.dataset.fleetWasDisabled = control.disabled ? '1' : '0';
+                control.disabled = true;
+            } else if (control.dataset.fleetWasDisabled === '0') {
+                control.disabled = false;
+                delete control.dataset.fleetWasDisabled;
+            } else {
+                delete control.dataset.fleetWasDisabled;
+            }
+        });
+    }
+
+    function showPanelMessage(panel, type, message) {
+        var oldMessage = panel.querySelector('[data-fleet-ajax-message]');
+        var header = panel.querySelector('.panel-header');
+        var alert = document.createElement('div');
+
+        if (oldMessage) {
+            oldMessage.remove();
+        }
+
+        alert.className = 'alert alert-' + type;
+        alert.setAttribute('role', 'alert');
+        alert.setAttribute('data-fleet-ajax-message', '1');
+        alert.textContent = message;
+
+        if (header && header.nextSibling) {
+            panel.insertBefore(alert, header.nextSibling);
+        } else {
+            panel.insertBefore(alert, panel.firstChild);
+        }
+    }
+
+    function copyMessages(doc, panel) {
+        var alerts = Array.prototype.slice.call(doc.querySelectorAll('[data-fleet-alerts] .alert'));
+        var header = panel.querySelector('.panel-header');
+        var oldMessage = panel.querySelector('[data-fleet-ajax-message]');
+        var container;
+
+        if (oldMessage) {
+            oldMessage.remove();
+        }
+
+        if (!alerts.length) {
+            return;
+        }
+
+        container = document.createElement('div');
+        container.setAttribute('data-fleet-ajax-message', '1');
+
+        alerts.forEach(function (alert) {
+            container.appendChild(alert.cloneNode(true));
+        });
+
+        if (header && header.nextSibling) {
+            panel.insertBefore(container, header.nextSibling);
+        } else {
+            panel.insertBefore(container, panel.firstChild);
+        }
+    }
+
+    function refreshCrewPanel(html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var currentPanel = crewPanel();
+        var nextPanel = doc.querySelector('[data-fleet-fragment="crew-panel"]');
+        var pageAlerts = document.querySelector('[data-fleet-alerts]');
+
+        if (!currentPanel || !nextPanel) {
+            throw new Error('The updated crew assignment panel was not found.');
+        }
+
+        currentPanel.replaceWith(nextPanel);
+        copyMessages(doc, nextPanel);
+
+        if (pageAlerts) {
+            pageAlerts.innerHTML = '';
+        }
+
+        if (window.initBulkDeleteForms) {
+            window.initBulkDeleteForms(nextPanel);
+        }
+
+        if (window.initRecordTables) {
+            window.initRecordTables(nextPanel);
+        }
+    }
+
+    function submitCrewForm(form, submitter) {
+        var action = form.getAttribute('action') || window.location.href;
+        var panel = form.closest('[data-fleet-fragment="crew-panel"]') || crewPanel();
+        var formData = new FormData(form);
+        var scrollX = window.scrollX;
+        var scrollY = window.scrollY;
+
+        if (form.dataset.fleetAjaxBusy === '1') {
+            return;
+        }
+
+        form.dataset.fleetAjaxBusy = '1';
+        setFormBusy(form, submitter, true);
+
+        fetch(action, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('Request failed. Please try again.');
+            }
+
+            return response.text();
+        }).then(function (html) {
+            refreshCrewPanel(html);
+            window.scrollTo(scrollX, scrollY);
+            window.setTimeout(function () {
+                window.scrollTo(scrollX, scrollY);
+            }, 180);
+        }).catch(function (error) {
+            if (panel) {
+                showPanelMessage(panel, 'error', error.message || 'Fleet assignment could not be updated.');
+            }
+
+            setFormBusy(form, submitter, false);
+        }).finally(function () {
+            delete form.dataset.fleetAjaxBusy;
+        });
+    }
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+
+        if (!form.matches('[data-fleet-ajax-form]') || !form.closest('[data-fleet-fragment="crew-panel"]')) {
+            return;
+        }
+
+        if (event.defaultPrevented) {
+            return;
+        }
+
+        event.preventDefault();
+        submitCrewForm(form, event.submitter || document.activeElement);
+    });
+})();
+
+(function () {
+    var workspace = document.querySelector('[data-booking-workspace]');
+
+    if (!workspace) {
+        return;
+    }
+
+    var customerSelect = workspace.querySelector('[data-booking-customer]');
+    var routeSelect = workspace.querySelector('[data-booking-route-select]');
+    var typeRadios = Array.prototype.slice.call(workspace.querySelectorAll('[data-booking-type]'));
+    var previewTargets = {};
+
+    workspace.querySelectorAll('[data-booking-preview]').forEach(function (target) {
+        previewTargets[target.getAttribute('data-booking-preview')] = target;
+    });
+
+    function selectedType() {
+        var selected = typeRadios.filter(function (radio) {
+            return radio.checked;
+        })[0];
+
+        return selected ? selected.value : 'per_trip';
+    }
+
+    function selectedTypeLabel() {
+        var selected = typeRadios.filter(function (radio) {
+            return radio.checked;
+        })[0];
+        var label = selected ? selected.closest('label') : null;
+        var strong = label ? label.querySelector('strong') : null;
+
+        return strong ? strong.textContent.trim() : 'Per Trip';
+    }
+
+    function readableDate(value) {
+        if (!value) {
+            return 'Not set';
+        }
+
+        var date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return date.toLocaleString('en-US', {
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+    }
+
+    function textFromSelect(select, fallback) {
+        var option = select && select.selectedOptions ? select.selectedOptions[0] : null;
+
+        if (!option || !option.value) {
+            return fallback;
+        }
+
+        return option.textContent.trim().replace(/\s+/g, ' ');
+    }
+
+    function setPreview(name, value) {
+        if (previewTargets[name]) {
+            previewTargets[name].textContent = value;
+        }
+    }
+
+    function filterRoutes() {
+        var currentType = selectedType();
+        var customerId = customerSelect ? customerSelect.value : '';
+        var routeOptions = routeSelect ? Array.prototype.slice.call(routeSelect.options) : [];
+        var firstMatch = null;
+
+        routeOptions.forEach(function (option) {
+            var isPlaceholder = option.value === '';
+            var matches = isPlaceholder || (
+                option.getAttribute('data-customer-id') === customerId &&
+                option.getAttribute('data-booking-type') === currentType
+            );
+
+            option.hidden = !matches;
+            option.disabled = !matches;
+
+            if (!isPlaceholder && matches && !firstMatch) {
+                firstMatch = option;
+            }
+        });
+
+        if (routeSelect && routeSelect.selectedOptions[0] && routeSelect.selectedOptions[0].disabled) {
+            routeSelect.value = firstMatch ? firstMatch.value : '';
+        } else if (routeSelect && !routeSelect.value && firstMatch) {
+            routeSelect.value = firstMatch.value;
+        }
+    }
+
+    function updatePreview() {
+        var route = routeSelect && routeSelect.selectedOptions ? routeSelect.selectedOptions[0] : null;
+        var pickup = workspace.querySelector('[data-booking-preview-source="pickup_date"]');
+        var delivery = workspace.querySelector('[data-booking-preview-source="delivery_date"]');
+        var shipment = workspace.querySelector('[data-booking-preview-source="shipment_number"]');
+        var representative = workspace.querySelector('[data-booking-preview-source="representative"]');
+
+        setPreview('type', selectedTypeLabel());
+        setPreview('customer', textFromSelect(customerSelect, 'Select a customer'));
+        setPreview('route', textFromSelect(routeSelect, 'Select a route'));
+        setPreview('plate', textFromSelect(workspace.querySelector('[data-booking-preview-source="plate"]'), 'Select a fleet unit'));
+        setPreview('pickup_date', readableDate(pickup ? pickup.value : ''));
+        setPreview('delivery_date', readableDate(delivery ? delivery.value : ''));
+        setPreview('shipment_number', shipment && shipment.value.trim() ? shipment.value.trim() : 'Not encoded');
+        setPreview('representative', representative && representative.value.trim() ? representative.value.trim() : 'Not encoded');
+
+        setPreview('delivery_rate', route && route.dataset.deliveryRate ? route.dataset.deliveryRate : '0.00');
+        setPreview('driver_rate', route && route.dataset.driverRate ? route.dataset.driverRate : '0.00');
+        setPreview('helper_rate', route && route.dataset.helperRate ? route.dataset.helperRate : '0.00');
+    }
+
+    function syncBookingForm() {
+        filterRoutes();
+        updatePreview();
+    }
+
+    workspace.addEventListener('change', syncBookingForm);
+    workspace.addEventListener('input', updatePreview);
+    workspace.addEventListener('reset', function () {
+        window.setTimeout(syncBookingForm, 0);
+    });
+
+    syncBookingForm();
 })();
