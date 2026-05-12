@@ -24,7 +24,7 @@
         modal.classList.add('is-open');
         document.body.classList.add('modal-open');
 
-        var firstField = modal.querySelector('input, select, textarea, button');
+        var firstField = modal.querySelector('input:not([type="hidden"]), select, textarea, button');
         if (firstField) {
             firstField.focus();
         }
@@ -87,6 +87,7 @@
         var button = form.querySelector('[data-bulk-delete-button]');
         var counter = form.querySelector('[data-bulk-delete-count]');
         var label = form.getAttribute('data-bulk-delete-label') || 'records';
+        var action = form.getAttribute('data-bulk-delete-action') || 'Delete';
         var selectedValues = {};
 
         function items() {
@@ -182,7 +183,7 @@
                 return;
             }
 
-            if (!window.confirm('Delete ' + selected + ' selected ' + label + '?')) {
+            if (!window.confirm(action + ' ' + selected + ' selected ' + label + '?')) {
                 event.preventDefault();
                 return;
             }
@@ -341,9 +342,10 @@
             var defaultPageSize = parseInt(tbody.getAttribute('data-page-size'), 10) || 10;
             var emptyRow = tbody.querySelector('.empty-row');
             var disabledTargets = [table.rows[0].cells.length - 1];
+            var bulkToggle = table.tHead ? table.tHead.querySelector('[data-bulk-delete-toggle]') : null;
 
-            if (table.tHead && table.tHead.querySelector('[data-bulk-delete-toggle]')) {
-                disabledTargets.push(0);
+            if (bulkToggle && bulkToggle.closest('th')) {
+                disabledTargets.push(Array.prototype.indexOf.call(bulkToggle.closest('tr').cells, bulkToggle.closest('th')));
             }
 
             table.dataset.datatableReady = '1';
@@ -844,37 +846,10 @@
 })();
 
 (function () {
-    var workspace = document.querySelector('[data-booking-workspace]');
+    var workspaces = Array.prototype.slice.call(document.querySelectorAll('[data-booking-workspace]'));
 
-    if (!workspace) {
+    if (!workspaces.length) {
         return;
-    }
-
-    var customerSelect = workspace.querySelector('[data-booking-customer]');
-    var routeSelect = workspace.querySelector('[data-booking-route-select]');
-    var typeRadios = Array.prototype.slice.call(workspace.querySelectorAll('[data-booking-type]'));
-    var previewTargets = {};
-
-    workspace.querySelectorAll('[data-booking-preview]').forEach(function (target) {
-        previewTargets[target.getAttribute('data-booking-preview')] = target;
-    });
-
-    function selectedType() {
-        var selected = typeRadios.filter(function (radio) {
-            return radio.checked;
-        })[0];
-
-        return selected ? selected.value : 'per_trip';
-    }
-
-    function selectedTypeLabel() {
-        var selected = typeRadios.filter(function (radio) {
-            return radio.checked;
-        })[0];
-        var label = selected ? selected.closest('label') : null;
-        var strong = label ? label.querySelector('strong') : null;
-
-        return strong ? strong.textContent.trim() : 'Per Trip';
     }
 
     function readableDate(value) {
@@ -907,71 +882,278 @@
         return option.textContent.trim().replace(/\s+/g, ' ');
     }
 
-    function setPreview(name, value) {
-        if (previewTargets[name]) {
-            previewTargets[name].textContent = value;
-        }
+    function optionSupportsType(option, type) {
+        var tokens = (option.getAttribute('data-booking-types') || '').split(/\s+/).filter(Boolean);
+
+        return tokens.indexOf(type) !== -1;
     }
 
-    function filterRoutes() {
-        var currentType = selectedType();
-        var customerId = customerSelect ? customerSelect.value : '';
-        var routeOptions = routeSelect ? Array.prototype.slice.call(routeSelect.options) : [];
-        var firstMatch = null;
+    function nextReference() {
+        var now = new Date();
 
-        routeOptions.forEach(function (option) {
-            var isPlaceholder = option.value === '';
-            var matches = isPlaceholder || (
-                option.getAttribute('data-customer-id') === customerId &&
-                option.getAttribute('data-booking-type') === currentType
-            );
+        return String(Math.floor(now.getTime() / 1000));
+    }
 
-            option.hidden = !matches;
-            option.disabled = !matches;
+    function initBookingWorkspace(workspace) {
+        var customerSelect = workspace.querySelector('[data-booking-customer]');
+        var routeSelect = workspace.querySelector('[data-booking-route-select]');
+        var typeRadios = Array.prototype.slice.call(workspace.querySelectorAll('[data-booking-type]'));
+        var previewTargets = {};
 
-            if (!isPlaceholder && matches && !firstMatch) {
-                firstMatch = option;
+        workspace.querySelectorAll('[data-booking-preview]').forEach(function (target) {
+            var name = target.getAttribute('data-booking-preview');
+
+            if (!previewTargets[name]) {
+                previewTargets[name] = [];
             }
+
+            previewTargets[name].push(target);
         });
 
-        if (routeSelect && routeSelect.selectedOptions[0] && routeSelect.selectedOptions[0].disabled) {
-            routeSelect.value = firstMatch ? firstMatch.value : '';
-        } else if (routeSelect && !routeSelect.value && firstMatch) {
-            routeSelect.value = firstMatch.value;
+        function selectedType() {
+            var selected = typeRadios.filter(function (radio) {
+                return radio.checked;
+            })[0];
+
+            return selected ? selected.value : 'per_trip';
         }
+
+        function selectedTypeLabel() {
+            var selected = typeRadios.filter(function (radio) {
+                return radio.checked;
+            })[0];
+            var label = selected ? selected.closest('label') : null;
+            var strong = label ? label.querySelector('strong') : null;
+
+            return strong ? strong.textContent.trim() : 'Per Trip';
+        }
+
+        function setPreview(name, value) {
+            (previewTargets[name] || []).forEach(function (target) {
+                target.textContent = value;
+            });
+        }
+
+        function renderRoutePreview(route) {
+            (previewTargets.route || []).forEach(function (target) {
+                target.textContent = '';
+
+                if (!route || !route.value) {
+                    target.textContent = 'Select a route';
+                    return;
+                }
+
+                var wrap = document.createElement('div');
+                var details = [
+                    route.dataset.truckType || '',
+                    route.dataset.deliveryType || '',
+                ].filter(Boolean).join(' / ');
+                var routeLine = document.createElement('div');
+                var origin = document.createElement('div');
+                var arrow = document.createElement('span');
+                var destination = document.createElement('div');
+                var meta = document.createElement('small');
+
+                function stop(labelText, valueText) {
+                    var label = document.createElement('small');
+                    var value = document.createElement('strong');
+
+                    label.textContent = labelText;
+                    value.textContent = valueText;
+
+                    return [label, value];
+                }
+
+                wrap.className = 'booking-route-preview';
+                routeLine.className = 'booking-route-preview-line';
+                origin.className = 'booking-route-preview-origin';
+                arrow.className = 'booking-route-preview-arrow';
+                destination.className = 'booking-route-preview-destination';
+                meta.className = 'booking-route-preview-details';
+
+                stop('Origin', route.dataset.origin || 'Origin pending').forEach(function (node) {
+                    origin.appendChild(node);
+                });
+                arrow.textContent = 'to';
+                stop('Destination', route.dataset.destination || 'Destination pending').forEach(function (node) {
+                    destination.appendChild(node);
+                });
+                meta.textContent = details || 'Route details pending';
+
+                routeLine.appendChild(origin);
+                routeLine.appendChild(arrow);
+                routeLine.appendChild(destination);
+                wrap.appendChild(routeLine);
+                wrap.appendChild(meta);
+                target.appendChild(wrap);
+            });
+        }
+
+        function setReference(value) {
+            var field = workspace.querySelector('[data-booking-reference-field]');
+
+            if (field) {
+                field.value = value;
+            }
+
+            setPreview('reference', value);
+        }
+
+        function filterCustomers() {
+            if (!customerSelect) {
+                return;
+            }
+
+            var currentType = selectedType();
+            var customerOptions = Array.prototype.slice.call(customerSelect.options);
+            var firstMatch = null;
+
+            customerOptions.forEach(function (option) {
+                var isPlaceholder = option.value === '';
+                var matches = isPlaceholder || optionSupportsType(option, currentType);
+
+                option.hidden = !matches;
+                option.disabled = !matches || (!isPlaceholder && !option.getAttribute('data-booking-types'));
+
+                if (!isPlaceholder && matches && !option.disabled && !firstMatch) {
+                    firstMatch = option;
+                }
+            });
+
+            if (customerSelect.selectedOptions[0] && customerSelect.selectedOptions[0].disabled) {
+                customerSelect.value = firstMatch ? firstMatch.value : '';
+            } else if (!customerSelect.value && firstMatch) {
+                customerSelect.value = firstMatch.value;
+            }
+        }
+
+        function filterRoutes() {
+            var currentType = selectedType();
+            var customerId = customerSelect ? customerSelect.value : '';
+            var routeOptions = routeSelect ? Array.prototype.slice.call(routeSelect.options) : [];
+            var firstMatch = null;
+
+            routeOptions.forEach(function (option) {
+                var isPlaceholder = option.value === '';
+                var matches = isPlaceholder || (
+                    option.getAttribute('data-customer-id') === customerId &&
+                    option.getAttribute('data-booking-type') === currentType
+                );
+
+                option.hidden = !matches;
+                option.disabled = !matches;
+
+                if (!isPlaceholder && matches && !firstMatch) {
+                    firstMatch = option;
+                }
+            });
+
+            if (routeSelect && routeSelect.selectedOptions[0] && routeSelect.selectedOptions[0].disabled) {
+                routeSelect.value = firstMatch ? firstMatch.value : '';
+            } else if (routeSelect && !routeSelect.value && firstMatch) {
+                routeSelect.value = firstMatch.value;
+            }
+        }
+
+        function updatePreview() {
+            var route = routeSelect && routeSelect.selectedOptions ? routeSelect.selectedOptions[0] : null;
+            var plate = workspace.querySelector('[data-booking-preview-source="plate"]');
+            var plateOption = plate && plate.selectedOptions ? plate.selectedOptions[0] : null;
+            var plateNote = workspace.querySelector('[data-booking-plate-note]');
+            var pickup = workspace.querySelector('[data-booking-preview-source="pickup_date"]');
+            var delivery = workspace.querySelector('[data-booking-preview-source="delivery_date"]');
+            var shipment = workspace.querySelector('[data-booking-preview-source="shipment_number"]');
+            var representative = workspace.querySelector('[data-booking-preview-source="representative"]');
+
+            setPreview('type', selectedTypeLabel());
+            setPreview('customer', textFromSelect(customerSelect, 'Select a customer'));
+            renderRoutePreview(route);
+            setPreview('plate', textFromSelect(plate, 'Select a fleet unit'));
+            setPreview('pickup_date', readableDate(pickup ? pickup.value : ''));
+            setPreview('delivery_date', readableDate(delivery ? delivery.value : ''));
+            setPreview('shipment_number', shipment && shipment.value.trim() ? shipment.value.trim() : 'Not encoded');
+            setPreview('representative', representative && representative.value.trim() ? representative.value.trim() : 'Not encoded');
+
+            setPreview('delivery_rate', route && route.dataset.deliveryRate ? route.dataset.deliveryRate : '0.00');
+            setPreview('driver_rate', route && route.dataset.driverRate ? route.dataset.driverRate : '0.00');
+            setPreview('helper_rate', route && route.dataset.helperRate ? route.dataset.helperRate : '0.00');
+
+            if (plateNote) {
+                var note = plateOption && plateOption.dataset.plateNote ? plateOption.dataset.plateNote : '';
+
+                plateNote.textContent = note;
+                plateNote.hidden = note === '';
+                plateNote.classList.toggle('booking-plate-note-warning', note !== '');
+            }
+        }
+
+        function syncBookingForm() {
+            filterCustomers();
+            filterRoutes();
+            updatePreview();
+        }
+
+        workspace.addEventListener('change', syncBookingForm);
+        workspace.addEventListener('input', updatePreview);
+        workspace.addEventListener('reset', function () {
+            window.setTimeout(syncBookingForm, 0);
+        });
+
+        workspace.setBookingType = function (type) {
+            typeRadios.forEach(function (radio) {
+                radio.checked = radio.value === type;
+            });
+            syncBookingForm();
+        };
+
+        workspace.prepareBookingModal = function (type) {
+            workspace.setBookingType(type);
+            setReference(nextReference());
+        };
+
+        syncBookingForm();
     }
 
-    function updatePreview() {
-        var route = routeSelect && routeSelect.selectedOptions ? routeSelect.selectedOptions[0] : null;
-        var pickup = workspace.querySelector('[data-booking-preview-source="pickup_date"]');
-        var delivery = workspace.querySelector('[data-booking-preview-source="delivery_date"]');
-        var shipment = workspace.querySelector('[data-booking-preview-source="shipment_number"]');
-        var representative = workspace.querySelector('[data-booking-preview-source="representative"]');
+    workspaces.forEach(initBookingWorkspace);
 
-        setPreview('type', selectedTypeLabel());
-        setPreview('customer', textFromSelect(customerSelect, 'Select a customer'));
-        setPreview('route', textFromSelect(routeSelect, 'Select a route'));
-        setPreview('plate', textFromSelect(workspace.querySelector('[data-booking-preview-source="plate"]'), 'Select a fleet unit'));
-        setPreview('pickup_date', readableDate(pickup ? pickup.value : ''));
-        setPreview('delivery_date', readableDate(delivery ? delivery.value : ''));
-        setPreview('shipment_number', shipment && shipment.value.trim() ? shipment.value.trim() : 'Not encoded');
-        setPreview('representative', representative && representative.value.trim() ? representative.value.trim() : 'Not encoded');
+    document.addEventListener('click', function (event) {
+        var trigger = event.target.closest('[data-booking-modal-type]');
 
-        setPreview('delivery_rate', route && route.dataset.deliveryRate ? route.dataset.deliveryRate : '0.00');
-        setPreview('driver_rate', route && route.dataset.driverRate ? route.dataset.driverRate : '0.00');
-        setPreview('helper_rate', route && route.dataset.helperRate ? route.dataset.helperRate : '0.00');
-    }
+        if (!trigger) {
+            return;
+        }
 
-    function syncBookingForm() {
-        filterRoutes();
-        updatePreview();
-    }
+        var targetId = trigger.getAttribute('data-modal-open');
+        var target = targetId ? document.getElementById(targetId) : null;
+        var type = trigger.getAttribute('data-booking-modal-type') || 'per_trip';
+        var workspace = target && target.matches('[data-booking-workspace]')
+            ? target
+            : target ? target.querySelector('[data-booking-workspace]') : null;
 
-    workspace.addEventListener('change', syncBookingForm);
-    workspace.addEventListener('input', updatePreview);
-    workspace.addEventListener('reset', function () {
-        window.setTimeout(syncBookingForm, 0);
+        if (workspace && typeof workspace.prepareBookingModal === 'function') {
+            workspace.prepareBookingModal(type);
+        } else if (workspace && typeof workspace.setBookingType === 'function') {
+            workspace.setBookingType(type);
+        }
     });
+})();
 
-    syncBookingForm();
+(function () {
+    function syncHelperGroup(group) {
+        var countTarget = group.querySelector('[data-dispatch-helper-count]');
+
+        if (!countTarget) {
+            return;
+        }
+
+        countTarget.textContent = group.querySelectorAll('input[type="checkbox"]:checked').length;
+    }
+
+    document.querySelectorAll('[data-dispatch-helper-group]').forEach(function (group) {
+        syncHelperGroup(group);
+
+        group.addEventListener('change', function () {
+            syncHelperGroup(group);
+        });
+    });
 })();

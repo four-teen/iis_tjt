@@ -128,6 +128,10 @@ function role_home_path($role)
         return 'administrator/customer_service.php';
     }
 
+    if ($role === 'Coordinator') {
+        return 'administrator/coordinator.php';
+    }
+
     return 'administrator/index.php';
 }
 

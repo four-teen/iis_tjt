@@ -32,6 +32,36 @@ function booking_type_label($value)
     return $code === 9 ? 'Lock In' : 'Per Trip';
 }
 
+function booking_type_key_from_code($value)
+{
+    return (int) $value === 9 ? 'lock_in' : 'per_trip';
+}
+
+function booking_table_exists($table)
+{
+    static $cache = [];
+
+    if (!preg_match('/^[A-Za-z0-9_]+$/', (string) $table)) {
+        return false;
+    }
+
+    if (array_key_exists($table, $cache)) {
+        return $cache[$table];
+    }
+
+    $stmt = db()->prepare('
+        SELECT COUNT(*)
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = :table
+    ');
+    $stmt->execute(['table' => $table]);
+
+    $cache[$table] = (int) $stmt->fetchColumn() > 0;
+
+    return $cache[$table];
+}
+
 function booking_route_matches_type($route, $type)
 {
     $deliveryType = (int) ($route['deliverytype'] ?? 0);
@@ -87,6 +117,73 @@ function booking_lapsed_label($pickupDate)
     return ['tone' => 'success', 'label' => $days . ' day' . ($days === 1 ? '' : 's') . ' ahead'];
 }
 
+function booking_ordinal_label($number)
+{
+    $number = (int) $number;
+    $lastTwo = $number % 100;
+
+    if ($lastTwo >= 11 && $lastTwo <= 13) {
+        return $number . 'th';
+    }
+
+    switch ($number % 10) {
+        case 1:
+            return $number . 'st';
+        case 2:
+            return $number . 'nd';
+        case 3:
+            return $number . 'rd';
+        default:
+            return $number . 'th';
+    }
+}
+
+function apply_plate_schedule_labels(array $bookings)
+{
+    $groups = [];
+
+    foreach ($bookings as $index => $booking) {
+        $fleetId = (int) ($booking['reservedplate'] ?? 0);
+
+        if ($fleetId <= 0) {
+            continue;
+        }
+
+        $groups[$fleetId][] = $index;
+    }
+
+    foreach ($groups as $indexes) {
+        usort($indexes, function ($left, $right) use ($bookings) {
+            $leftBooking = $bookings[$left];
+            $rightBooking = $bookings[$right];
+            $leftKey = [
+                strtotime((string) ($leftBooking['pickupdate'] ?? '')) ?: PHP_INT_MAX,
+                strtotime((string) ($leftBooking['deliverydate'] ?? '')) ?: PHP_INT_MAX,
+                strtotime((string) ($leftBooking['bookingdate'] ?? '')) ?: PHP_INT_MAX,
+                (int) ($leftBooking['bookingidauto'] ?? 0),
+            ];
+            $rightKey = [
+                strtotime((string) ($rightBooking['pickupdate'] ?? '')) ?: PHP_INT_MAX,
+                strtotime((string) ($rightBooking['deliverydate'] ?? '')) ?: PHP_INT_MAX,
+                strtotime((string) ($rightBooking['bookingdate'] ?? '')) ?: PHP_INT_MAX,
+                (int) ($rightBooking['bookingidauto'] ?? 0),
+            ];
+
+            return $leftKey <=> $rightKey;
+        });
+
+        $total = count($indexes);
+
+        foreach ($indexes as $position => $bookingIndex) {
+            $bookings[$bookingIndex]['plate_schedule_position'] = $position + 1;
+            $bookings[$bookingIndex]['plate_schedule_total'] = $total;
+            $bookings[$bookingIndex]['plate_schedule_label'] = booking_ordinal_label($position + 1) . ' scheduled';
+        }
+    }
+
+    return $bookings;
+}
+
 function booking_datetime_value($value)
 {
     $timestamp = strtotime((string) $value);
@@ -115,9 +212,13 @@ function normalize_booking_datetime($value)
     return $timestamp ? date('Y-m-d H:i', $timestamp) : null;
 }
 
-function generate_booking_reference()
+function generate_booking_reference($preferredReference = null)
 {
-    $reference = time();
+    $reference = (int) $preferredReference;
+
+    if ($reference < 1000000000) {
+        $reference = time();
+    }
 
     while (booking_reference_exists($reference)) {
         $reference++;
@@ -210,19 +311,35 @@ function booking_counts()
 {
     ensure_customer_service_schema();
 
+    $dispatchJoin = '';
+    $dispatchWhere = '';
+
+    if (booking_table_exists('tbldispatched')) {
+        $dispatchJoin = 'LEFT JOIN tbldispatched d ON d.dis_referenceid = b.bookingid';
+        $dispatchWhere = 'WHERE d.dispatched_id IS NULL';
+    }
+
     $row = db()->query('
         SELECT
             COUNT(*) AS active_bookings,
-            SUM(CASE WHEN pickupdate < NOW() THEN 1 ELSE 0 END) AS pickup_due,
-            SUM(CASE WHEN DATE(pickupdate) = CURRENT_DATE THEN 1 ELSE 0 END) AS pickup_today
-        FROM tblbooking
+            SUM(CASE WHEN b.pickupdate < NOW() THEN 1 ELSE 0 END) AS pickup_due,
+            SUM(CASE WHEN DATE(b.pickupdate) = CURRENT_DATE THEN 1 ELSE 0 END) AS pickup_today
+        FROM tblbooking b
+        ' . $dispatchJoin . '
+        ' . $dispatchWhere . '
     ')->fetch();
+    $dispatched = 0;
+
+    if (booking_table_exists('tbldispatched')) {
+        $dispatched = (int) db()->query('SELECT COUNT(*) FROM tbldispatched')->fetchColumn();
+    }
 
     return [
         'active' => (int) ($row['active_bookings'] ?? 0),
         'pickup_due' => (int) ($row['pickup_due'] ?? 0),
         'pickup_today' => (int) ($row['pickup_today'] ?? 0),
         'canceled' => (int) db()->query('SELECT COUNT(*) FROM tblbooking_canceled')->fetchColumn(),
+        'dispatched' => $dispatched,
     ];
 }
 
@@ -256,6 +373,24 @@ function list_booking_fleet_options()
 {
     ensure_customer_service_schema();
 
+    $dispatchJoin = '';
+    $dispatchSelect = '0 AS dispatch_count';
+    $activeBookingDispatchJoin = '';
+    $activeBookingWhere = '';
+
+    if (booking_table_exists('tbldispatched')) {
+        $dispatchSelect = 'COALESCE(active_dispatches.dispatch_count, 0) AS dispatch_count';
+        $dispatchJoin = '
+            LEFT JOIN (
+                SELECT CAST(dis_plaka AS UNSIGNED) AS fleetid, COUNT(*) AS dispatch_count
+                FROM tbldispatched
+                GROUP BY CAST(dis_plaka AS UNSIGNED)
+            ) active_dispatches ON active_dispatches.fleetid = f.fleetid
+        ';
+        $activeBookingDispatchJoin = 'LEFT JOIN tbldispatched d ON d.dis_referenceid = b.bookingid';
+        $activeBookingWhere = 'WHERE d.dispatched_id IS NULL';
+    }
+
     return db()->query('
         SELECT
             f.fleetid,
@@ -264,15 +399,25 @@ function list_booking_fleet_options()
             f.validity,
             fi.trucktype,
             tt.trucktype AS trucktype_name,
-            COALESCE(active_bookings.total_active, 0) AS active_booking_count
+            COALESCE(active_bookings.total_active, 0) AS active_booking_count,
+            active_bookings.next_pickup,
+            active_bookings.last_delivery,
+            ' . $dispatchSelect . '
         FROM tblfleet f
         LEFT JOIN tblfleet_info_1 fi ON fi.fleetid = f.fleetid
         LEFT JOIN tbltrucktype tt ON tt.trucktypeid = fi.trucktype
         LEFT JOIN (
-            SELECT CAST(reservedplate AS UNSIGNED) AS fleetid, COUNT(*) AS total_active
-            FROM tblbooking
-            GROUP BY CAST(reservedplate AS UNSIGNED)
+            SELECT
+                CAST(b.reservedplate AS UNSIGNED) AS fleetid,
+                COUNT(*) AS total_active,
+                MIN(b.pickupdate) AS next_pickup,
+                MAX(b.deliverydate) AS last_delivery
+            FROM tblbooking b
+            ' . $activeBookingDispatchJoin . '
+            ' . $activeBookingWhere . '
+            GROUP BY CAST(b.reservedplate AS UNSIGNED)
         ) active_bookings ON active_bookings.fleetid = f.fleetid
+        ' . $dispatchJoin . '
         ORDER BY f.platenumber ASC
         LIMIT 1000
     ')->fetchAll();
@@ -332,6 +477,18 @@ function fleet_booking_conflict_count($fleetId, $pickupDate, $deliveryDate, $exc
 
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
+
+    return (int) $stmt->fetchColumn();
+}
+
+function fleet_dispatch_conflict_count($fleetId)
+{
+    if (!booking_table_exists('tbldispatched')) {
+        return 0;
+    }
+
+    $stmt = db()->prepare('SELECT COUNT(*) FROM tbldispatched WHERE CAST(dis_plaka AS UNSIGNED) = :fleet_id');
+    $stmt->execute(['fleet_id' => (int) $fleetId]);
 
     return (int) $stmt->fetchColumn();
 }
@@ -396,8 +553,8 @@ function validate_booking_data($data, $excludeBookingId = null)
 
     if (!find_fleet_by_id($fleetId)) {
         $errors[] = 'Select a valid reserved plate number.';
-    } elseif ($pickupDate !== null && $deliveryDate !== null && fleet_booking_conflict_count($fleetId, $pickupDate, $deliveryDate, $excludeBookingId) > 0) {
-        $errors[] = 'Selected plate is already reserved for an overlapping booking schedule.';
+    } elseif (fleet_dispatch_conflict_count($fleetId) > 0) {
+        $errors[] = 'Selected plate is already marked as dispatched.';
     }
 
     return $errors;
@@ -407,7 +564,7 @@ function create_booking($data)
 {
     ensure_customer_service_schema();
 
-    $reference = generate_booking_reference();
+    $reference = generate_booking_reference($data['booking_reference'] ?? null);
     $bookingDate = normalize_booking_datetime($data['booking_date']);
     $pickupDate = normalize_booking_datetime($data['pickup_date']);
     $deliveryDate = normalize_booking_datetime($data['delivery_date']);
@@ -490,6 +647,14 @@ function list_active_bookings()
 {
     ensure_customer_service_schema();
 
+    $dispatchJoin = '';
+    $dispatchWhere = '';
+
+    if (booking_table_exists('tbldispatched')) {
+        $dispatchJoin = 'LEFT JOIN tbldispatched dispatched_booking ON dispatched_booking.dis_referenceid = b.bookingid';
+        $dispatchWhere = 'WHERE dispatched_booking.dispatched_id IS NULL';
+    }
+
     return db()->query('
         SELECT
             b.*,
@@ -505,6 +670,37 @@ function list_active_bookings()
             f.platenumber,
             sn.shipmentnumber
         FROM tblbooking b
+        ' . $dispatchJoin . '
+        LEFT JOIN tblcustomer c ON c.customerid = CAST(b.customername AS UNSIGNED)
+        LEFT JOIN tblcustomerinformation ci ON ci.customerinformationid = CAST(b.origindestination AS UNSIGNED)
+        LEFT JOIN tbldeliverytype dt ON dt.deliverytypeid = ci.deliverytype
+        LEFT JOIN tbltrucktype tt ON tt.trucktypeid = ci.trucktype
+        LEFT JOIN tblfleet f ON f.fleetid = CAST(b.reservedplate AS UNSIGNED)
+        LEFT JOIN tblshipment_number sn ON sn.sn_reference_id = b.bookingid
+        ' . $dispatchWhere . '
+        ORDER BY b.bookingidauto DESC
+        LIMIT 500
+    ')->fetchAll();
+}
+
+function list_recent_canceled_bookings($limit = 8)
+{
+    ensure_customer_service_schema();
+
+    $limit = max(1, min(50, (int) $limit));
+
+    return db()->query('
+        SELECT
+            b.*,
+            c.soa,
+            c.customername AS customer_label,
+            ci.origin,
+            ci.destination,
+            dt.deliverytype AS deliverytype_name,
+            tt.trucktype AS trucktype_name,
+            f.platenumber,
+            sn.shipmentnumber
+        FROM tblbooking_canceled b
         LEFT JOIN tblcustomer c ON c.customerid = CAST(b.customername AS UNSIGNED)
         LEFT JOIN tblcustomerinformation ci ON ci.customerinformationid = CAST(b.origindestination AS UNSIGNED)
         LEFT JOIN tbldeliverytype dt ON dt.deliverytypeid = ci.deliverytype
@@ -512,23 +708,169 @@ function list_active_bookings()
         LEFT JOIN tblfleet f ON f.fleetid = CAST(b.reservedplate AS UNSIGNED)
         LEFT JOIN tblshipment_number sn ON sn.sn_reference_id = b.bookingid
         ORDER BY b.bookingidauto DESC
-        LIMIT 500
+        LIMIT ' . $limit . '
     ')->fetchAll();
+}
+
+function booking_customer_type_availability($routes)
+{
+    $availability = [];
+
+    foreach ($routes as $route) {
+        $customerId = (int) ($route['customerid'] ?? 0);
+
+        if ($customerId <= 0) {
+            continue;
+        }
+
+        $type = booking_type_key_from_code($route['deliverytype'] ?? 0);
+        $availability[$customerId][$type] = true;
+    }
+
+    $tokens = [];
+
+    foreach ($availability as $customerId => $types) {
+        $tokens[$customerId] = implode(' ', array_keys($types));
+    }
+
+    return $tokens;
+}
+
+function booking_setup_warnings()
+{
+    $warnings = [];
+    $activeCustomers = (int) db()->query('SELECT COUNT(*) FROM tblcustomer WHERE status = 1')->fetchColumn();
+    $routes = (int) db()->query('SELECT COUNT(*) FROM tblcustomerinformation')->fetchColumn();
+    $fleet = (int) db()->query('SELECT COUNT(*) FROM tblfleet')->fetchColumn();
+    $zeroDeliveryRates = (int) db()->query('SELECT COUNT(*) FROM tblcustomerinformation WHERE deliveryrate <= 0')->fetchColumn();
+    $unprofiledFleet = (int) db()->query('
+        SELECT COUNT(*)
+        FROM tblfleet f
+        LEFT JOIN tblfleet_info_1 fi ON fi.fleetid = f.fleetid
+        WHERE fi.fleetid IS NULL OR fi.trucktype IS NULL
+    ')->fetchColumn();
+
+    if ($activeCustomers === 0) {
+        $warnings[] = ['tone' => 'danger', 'label' => 'No active customers', 'count' => 0];
+    }
+
+    if ($routes === 0) {
+        $warnings[] = ['tone' => 'danger', 'label' => 'No customer routes', 'count' => 0];
+    }
+
+    if ($fleet === 0) {
+        $warnings[] = ['tone' => 'danger', 'label' => 'No fleet records', 'count' => 0];
+    }
+
+    if ($zeroDeliveryRates > 0) {
+        $warnings[] = ['tone' => 'warning', 'label' => 'Routes with zero delivery rate', 'count' => $zeroDeliveryRates];
+    }
+
+    if ($unprofiledFleet > 0) {
+        $warnings[] = ['tone' => 'warning', 'label' => 'Fleet records missing truck profile', 'count' => $unprofiledFleet];
+    }
+
+    return $warnings;
 }
 
 function booking_crew_counts()
 {
+    $statusJoin = '';
+    $statusWhere = '';
+
+    if (booking_table_exists('tblemployees_status')) {
+        $statusJoin = ' INNER JOIN tblemployees_status s ON s.status_employee_id = e.employee_id';
+        $statusWhere = ' AND s.status_code = 1';
+    }
+
     $stmt = db()->query('
         SELECT
-            SUM(CASE WHEN who_is = "1" THEN 1 ELSE 0 END) AS drivers,
-            SUM(CASE WHEN who_is = "2" THEN 1 ELSE 0 END) AS helpers
-        FROM tblemployees
-        WHERE who_is IN ("1", "2")
+            SUM(CASE WHEN e.who_is = "1" THEN 1 ELSE 0 END) AS drivers,
+            SUM(CASE WHEN e.who_is = "2" THEN 1 ELSE 0 END) AS helpers
+        FROM tblemployees e
+        ' . $statusJoin . '
+        WHERE e.who_is IN ("1", "2")' . $statusWhere . '
     ');
     $row = $stmt->fetch();
+    $dispatched = 0;
+
+    if (booking_table_exists('tbldispatch_driver')) {
+        $dispatched += (int) db()->query('SELECT COUNT(DISTINCT dispatch_driver) FROM tbldispatch_driver')->fetchColumn();
+    }
+
+    if (booking_table_exists('tbldispatch_helper')) {
+        $dispatched += (int) db()->query('SELECT COUNT(DISTINCT dispatch_helper) FROM tbldispatch_helper')->fetchColumn();
+    }
+
+    $drivers = (int) ($row['drivers'] ?? 0);
+    $helpers = (int) ($row['helpers'] ?? 0);
+    $active = $drivers + $helpers;
 
     return [
-        'drivers' => (int) ($row['drivers'] ?? 0),
-        'helpers' => (int) ($row['helpers'] ?? 0),
+        'drivers' => $drivers,
+        'helpers' => $helpers,
+        'active' => $active,
+        'dispatched' => min($active, $dispatched),
+        'available' => max(0, $active - $dispatched),
     ];
+}
+
+function list_booking_crew_status($limit = 12)
+{
+    $limit = max(1, min(100, (int) $limit));
+    $profileJoin = '';
+    $profileSelect = "'No Contact' AS phone";
+    $statusJoin = '';
+    $statusWhere = '';
+    $dispatchJoin = '';
+    $dispatchSelect = "'Available' AS dispatch_status";
+
+    if (booking_table_exists('tblprofile')) {
+        $profileSelect = "COALESCE(p.phone, 'No Contact') AS phone";
+        $profileJoin = ' LEFT JOIN tblprofile p ON p.profile_employee_id = e.employee_id';
+    }
+
+    if (booking_table_exists('tblemployees_status')) {
+        $statusJoin = ' INNER JOIN tblemployees_status s ON s.status_employee_id = e.employee_id';
+        $statusWhere = ' AND s.status_code = 1';
+    }
+
+    if (booking_table_exists('tbldispatch_driver') || booking_table_exists('tbldispatch_helper')) {
+        $driverColumn = 'NULL';
+        $helperColumn = 'NULL';
+        $driverJoin = booking_table_exists('tbldispatch_driver')
+            ? ' LEFT JOIN (SELECT DISTINCT dispatch_driver FROM tbldispatch_driver) dd ON dd.dispatch_driver = e.employee_id'
+            : '';
+        $helperJoin = booking_table_exists('tbldispatch_helper')
+            ? ' LEFT JOIN (SELECT DISTINCT dispatch_helper FROM tbldispatch_helper) dh ON dh.dispatch_helper = e.employee_id'
+            : '';
+        $driverColumn = booking_table_exists('tbldispatch_driver') ? 'dd.dispatch_driver' : 'NULL';
+        $helperColumn = booking_table_exists('tbldispatch_helper') ? 'dh.dispatch_helper' : 'NULL';
+        $dispatchJoin = $driverJoin . $helperJoin;
+        $dispatchSelect = "
+            CASE
+                WHEN {$driverColumn} IS NOT NULL THEN 'Dispatched as Driver'
+                WHEN {$helperColumn} IS NOT NULL THEN 'Dispatched as Helper'
+                ELSE 'Available'
+            END AS dispatch_status
+        ";
+    }
+
+    return db()->query('
+        SELECT
+            e.employee_id,
+            e.firstname,
+            e.middlename,
+            e.lastname,
+            e.who_is,
+            ' . $profileSelect . ',
+            ' . $dispatchSelect . '
+        FROM tblemployees e
+        ' . $profileJoin . '
+        ' . $statusJoin . '
+        ' . $dispatchJoin . '
+        WHERE e.who_is IN ("1", "2")' . $statusWhere . '
+        ORDER BY e.who_is ASC, e.lastname ASC, e.firstname ASC
+        LIMIT ' . $limit . '
+    ')->fetchAll();
 }

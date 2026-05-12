@@ -48,6 +48,15 @@ $navGroups = [
             'required_roles' => ['Administrator', 'Customer Service'],
         ],
     ],
+    'Coordination' => [
+        [
+            'key' => 'coordinator',
+            'label' => 'Coordinator',
+            'icon' => 'truck',
+            'url' => app_url('administrator/coordinator.php'),
+            'required_roles' => ['Administrator', 'Coordinator'],
+        ],
+    ],
     'Operations Setup' => [
         [
             'key' => 'locations',

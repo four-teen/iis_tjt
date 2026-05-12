@@ -264,6 +264,70 @@ CREATE TABLE IF NOT EXISTS tblshipment_number (
     KEY idx_tblshipment_number_value (shipmentnumber)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS tblcoord_dispatch_preparations (
+    prep_id INT(11) NOT NULL AUTO_INCREMENT,
+    prep_referenceid BIGINT NOT NULL,
+    prep_coordinator BIGINT UNSIGNED NULL,
+    prep_customer_name_id INT(11) NOT NULL,
+    prep_ods INT(11) NOT NULL,
+    prep_plaka INT(11) NOT NULL,
+    prep_dispatched_date DATETIME NOT NULL,
+    prep_status VARCHAR(20) NOT NULL DEFAULT 'prepared',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (prep_id),
+    UNIQUE KEY uq_tblcoord_dispatch_preparations_reference (prep_referenceid),
+    KEY idx_tblcoord_dispatch_preparations_status (prep_status),
+    KEY idx_tblcoord_dispatch_preparations_plate (prep_plaka),
+    KEY idx_tblcoord_dispatch_preparations_dispatch_date (prep_dispatched_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tbldispatched (
+    dispatched_id INT(11) NOT NULL AUTO_INCREMENT,
+    dis_referenceid BIGINT NOT NULL,
+    dis_coordinator BIGINT UNSIGNED NULL,
+    dis_customer_name_id INT(11) NOT NULL,
+    dis_ods INT(11) NOT NULL,
+    dis_plaka INT(11) NOT NULL,
+    dis_dispatched_date DATETIME NOT NULL,
+    dis_approved TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (dispatched_id),
+    UNIQUE KEY uq_tbldispatched_reference (dis_referenceid),
+    KEY idx_tbldispatched_plate (dis_plaka),
+    KEY idx_tbldispatched_dispatch_date (dis_dispatched_date),
+    KEY idx_tbldispatched_customer (dis_customer_name_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tbldispatch_driver (
+    dispatch_driver_auto_id INT(11) NOT NULL AUTO_INCREMENT,
+    dispatch_reference_id BIGINT NOT NULL,
+    dispatch_driver INT(11) NOT NULL,
+    dispatch_date DATETIME NULL,
+    dispatch_customer INT(11) NOT NULL,
+    coordinator BIGINT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (dispatch_driver_auto_id),
+    UNIQUE KEY uq_tbldispatch_driver_reference_driver (dispatch_reference_id, dispatch_driver),
+    KEY idx_tbldispatch_driver_driver (dispatch_driver),
+    KEY idx_tbldispatch_driver_reference (dispatch_reference_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tbldispatch_helper (
+    dispatch_helper_auto_id INT(11) NOT NULL AUTO_INCREMENT,
+    dispatch_reference_id BIGINT NOT NULL,
+    dispatch_helper INT(11) NOT NULL,
+    dispatch_date DATETIME NULL,
+    dispatch_customer INT(11) NOT NULL,
+    coordinator BIGINT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (dispatch_helper_auto_id),
+    UNIQUE KEY uq_tbldispatch_helper_reference_helper (dispatch_reference_id, dispatch_helper),
+    KEY idx_tbldispatch_helper_helper (dispatch_helper),
+    KEY idx_tbldispatch_helper_reference (dispatch_reference_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS tblcustomerinformation (
     customerinformationid INT(11) NOT NULL AUTO_INCREMENT,
     customerid INT(11) NOT NULL,
