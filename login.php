@@ -85,6 +85,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Login | <?php echo h($app['name']); ?></title>
     <link rel="icon" href="<?php echo h(app_url('assets/img/favicon.png')); ?>">
     <link rel="apple-touch-icon" href="<?php echo h(app_url('assets/img/apple-touch-icon.png')); ?>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="<?php echo h(app_url('assets/css/app.css')); ?>">
 </head>
 <body class="login-page">

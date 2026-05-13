@@ -34,7 +34,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         'dispatch_date' => $_POST['dispatch_date'] ?? '',
         'route_id' => $_POST['route_id'] ?? '',
         'plate_id' => $_POST['plate_id'] ?? '',
-        'driver_id' => $_POST['driver_id'] ?? '',
+        'driver_ids' => $_POST['driver_ids'] ?? [],
         'helper_ids' => $_POST['helper_ids'] ?? [],
     ];
 
@@ -67,7 +67,7 @@ if (!$booking) {
 
 $selectedRouteId = (int) (!empty($booking['prep_id']) ? $booking['prep_ods'] : $booking['origindestination']);
 $selectedPlateId = (int) (!empty($booking['prep_id']) ? $booking['prep_plaka'] : $booking['reservedplate']);
-$selectedDriverId = (int) ($booking['driver_primary_id'] ?? 0);
+$selectedDriverIds = coordinator_csv_ids($booking['driver_ids'] ?? '');
 $selectedHelperIds = coordinator_csv_ids($booking['helper_ids'] ?? '');
 $dispatchValue = booking_datetime_value($booking['prep_dispatched_date'] ?: $booking['pickupdate']);
 $customerRoutes = list_customer_routes_for_customer((int) $booking['customername']);
@@ -166,7 +166,7 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="post" action="<?php echo h(app_url($dispatchUrl)); ?>" class="dispatch-manage-form">
+        <form method="post" action="<?php echo h(app_url($dispatchUrl)); ?>" class="dispatch-manage-form" data-dispatch-manage-form>
             <?php echo csrf_field(); ?>
             <input type="hidden" name="reference" value="<?php echo h($booking['bookingid']); ?>">
 
@@ -223,33 +223,38 @@ require APP_ROOT . '/partials/admin_header.php';
                 </div>
 
                 <div class="dispatch-crew-grid">
-                    <div>
-                        <label for="dispatch-driver">Driver</label>
-                        <select id="dispatch-driver" name="driver_id">
-                            <option value="">No driver selected</option>
-                            <?php foreach ($drivers as $driver): ?>
-                                <option value="<?php echo h($driver['employee_id']); ?>"<?php echo coordinator_selected($driver['employee_id'], $selectedDriverId); ?>>
-                                    <?php echo h(coordinator_person_option_label($driver)); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="dispatch-helper-picker" data-dispatch-crew-group>
+                        <div class="dispatch-helper-title">
+                            <label for="dispatch-driver">Drivers</label>
+                            <span><strong data-dispatch-selected-count><?php echo h(count($selectedDriverIds)); ?></strong> selected</span>
+                        </div>
+                        <div class="dispatch-select2-wrap">
+                            <select id="dispatch-driver" class="js-example-basic-multiple" name="driver_ids[]" multiple="multiple" data-placeholder="Search drivers" data-dispatch-multi-select data-dispatch-preview-field="driver" <?php echo !$drivers ? 'disabled' : ''; ?>>
+                                <?php foreach ($drivers as $driver): ?>
+                                    <option value="<?php echo h($driver['employee_id']); ?>"<?php echo in_array((int) $driver['employee_id'], array_map('intval', $selectedDriverIds), true) ? ' selected' : ''; ?>>
+                                        <?php echo h(coordinator_person_option_label($driver)); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (!$drivers): ?>
+                                <p class="empty-panel-copy">No drivers are encoded yet.</p>
+                            <?php endif; ?>
+                        </div>
                     </div>
 
-                    <div class="dispatch-helper-picker" data-dispatch-helper-group>
+                    <div class="dispatch-helper-picker" data-dispatch-crew-group data-dispatch-helper-group>
                         <div class="dispatch-helper-title">
-                            <label>Helpers</label>
-                            <span><strong data-dispatch-helper-count><?php echo h(count($selectedHelperIds)); ?></strong> selected</span>
+                            <label for="dispatch-helpers">Helpers</label>
+                            <span><strong data-dispatch-selected-count data-dispatch-helper-count><?php echo h(count($selectedHelperIds)); ?></strong> selected</span>
                         </div>
-                        <div class="dispatch-helper-grid">
+                        <div class="dispatch-select2-wrap">
+                            <select id="dispatch-helpers" class="js-example-basic-multiple" name="helper_ids[]" multiple="multiple" data-placeholder="Search helpers" data-dispatch-multi-select data-dispatch-helper-select data-dispatch-preview-field="helpers" <?php echo !$helpers ? 'disabled' : ''; ?>>
                             <?php foreach ($helpers as $helper): ?>
-                                <label class="dispatch-helper-option">
-                                    <input type="checkbox" name="helper_ids[]" value="<?php echo h($helper['employee_id']); ?>"<?php echo coordinator_checked($helper['employee_id'], $selectedHelperIds); ?>>
-                                    <span>
-                                        <strong><?php echo h(coordinator_employee_name($helper)); ?></strong>
-                                        <small><?php echo h(((int) ($helper['active_dispatch_count'] ?? 0) > 0) ? 'Already assigned' : 'Available'); ?></small>
-                                    </span>
-                                </label>
+                                <option value="<?php echo h($helper['employee_id']); ?>"<?php echo in_array((int) $helper['employee_id'], array_map('intval', $selectedHelperIds), true) ? ' selected' : ''; ?>>
+                                    <?php echo h(coordinator_person_option_label($helper)); ?>
+                                </option>
                             <?php endforeach; ?>
+                            </select>
                             <?php if (!$helpers): ?>
                                 <p class="empty-panel-copy">No helpers are encoded yet.</p>
                             <?php endif; ?>
@@ -261,7 +266,55 @@ require APP_ROOT . '/partials/admin_header.php';
             <div class="dispatch-manage-actions">
                 <a class="btn btn-light" href="<?php echo h(app_url($returnUrl)); ?>">Cancel</a>
                 <button type="submit" name="action" value="save_confirmation" class="btn btn-light btn-icon" <?php echo !$canConfirm ? 'disabled' : ''; ?>><?php echo icon('save'); ?> Save Confirmation</button>
-                <button type="submit" name="action" value="dispatch_now" class="btn btn-primary btn-icon" <?php echo !$canDispatch ? 'disabled' : ''; ?>><?php echo icon('truck'); ?> Dispatch Now</button>
+                <button type="submit" name="action" value="dispatch_now" class="btn btn-primary btn-icon" data-dispatch-preview-open="dispatch-preview-modal" <?php echo !$canDispatch ? 'disabled' : ''; ?>><?php echo icon('truck'); ?> Dispatch Now</button>
+            </div>
+
+            <div class="modal dispatch-preview-modal" id="dispatch-preview-modal" hidden role="dialog" aria-modal="true" aria-labelledby="dispatch-preview-title">
+                <div class="modal-card dispatch-preview-card">
+                    <div class="modal-header">
+                        <div>
+                            <p class="eyebrow">Confirm Dispatch</p>
+                            <h3 id="dispatch-preview-title">Review Before Dispatch</h3>
+                        </div>
+                        <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <dl class="dispatch-preview-list">
+                            <div>
+                                <dt>Reference</dt>
+                                <dd><?php echo h($booking['bookingid']); ?></dd>
+                            </div>
+                            <div>
+                                <dt>Customer</dt>
+                                <dd><?php echo h(coordinator_customer_text($booking)); ?></dd>
+                            </div>
+                            <div>
+                                <dt>Dispatch Date</dt>
+                                <dd data-dispatch-preview="dispatch_date">Not set</dd>
+                            </div>
+                            <div>
+                                <dt>Plate Number</dt>
+                                <dd data-dispatch-preview="plate">Not selected</dd>
+                            </div>
+                            <div>
+                                <dt>Origin and Destination</dt>
+                                <dd data-dispatch-preview="route">Not selected</dd>
+                            </div>
+                            <div>
+                                <dt>Drivers</dt>
+                                <dd data-dispatch-preview="driver">Not selected</dd>
+                            </div>
+                            <div>
+                                <dt>Helpers</dt>
+                                <dd data-dispatch-preview="helpers">No helpers selected</dd>
+                            </div>
+                        </dl>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-light" data-modal-close>Cancel</button>
+                            <button type="submit" name="action" value="dispatch_now" class="btn btn-primary btn-icon"><?php echo icon('truck'); ?> Confirm Dispatch</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </form>
     </article>

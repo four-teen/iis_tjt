@@ -147,22 +147,24 @@ function coordinator_route_text($origin, $destination)
 
 function coordinator_booking_route_text(array $booking)
 {
-    $origin = $booking['prep_origin'] ?: $booking['origin'];
-    $destination = $booking['prep_destination'] ?: $booking['destination'];
+    $origin = ($booking['prep_origin'] ?? '') ?: ($booking['origin'] ?? '');
+    $destination = ($booking['prep_destination'] ?? '') ?: ($booking['destination'] ?? '');
 
     return coordinator_route_text($origin, $destination);
 }
 
 function coordinator_booking_plate_text(array $booking)
 {
-    return clean_text($booking['prep_platenumber'] ?: $booking['platenumber'] ?: 'No plate selected');
+    return clean_text(($booking['prep_platenumber'] ?? '') ?: ($booking['platenumber'] ?? '') ?: 'No plate selected');
 }
 
 function coordinator_route_detail_text(array $booking)
 {
-    $truckType = $booking['prep_trucktype_name'] ?: $booking['trucktype_name'] ?: 'Truck type pending';
-    $deliveryType = $booking['prep_deliverytype_name'] ?: $booking['deliverytype_name'] ?: 'Delivery type pending';
-    $rate = $booking['prep_deliveryrate'] !== null ? $booking['prep_deliveryrate'] : ($booking['deliveryrate'] ?? 0);
+    $truckType = ($booking['prep_trucktype_name'] ?? '') ?: ($booking['trucktype_name'] ?? '') ?: 'Truck type pending';
+    $deliveryType = ($booking['prep_deliverytype_name'] ?? '') ?: ($booking['deliverytype_name'] ?? '') ?: 'Delivery type pending';
+    $rate = array_key_exists('prep_deliveryrate', $booking) && $booking['prep_deliveryrate'] !== null
+        ? $booking['prep_deliveryrate']
+        : ($booking['deliveryrate'] ?? 0);
 
     return clean_text($truckType) . ' / ' . clean_text($deliveryType) . ' / DD: ' . coordinator_money_text($rate);
 }
@@ -261,7 +263,7 @@ function coordinator_crew_count_select($table, $referenceColumn, $employeeColumn
             MIN({$employeeColumn}) AS {$alias}_primary_id,
             COUNT(*) AS {$alias}_count,
             GROUP_CONCAT({$employeeColumn} ORDER BY {$employeeColumn} ASC SEPARATOR ',') AS {$alias}_ids,
-            GROUP_CONCAT(CONCAT(e.lastname, ', ', e.firstname) ORDER BY e.lastname ASC, e.firstname ASC SEPARATOR ', ') AS {$alias}_names
+            GROUP_CONCAT(CONCAT(e.lastname, ', ', e.firstname) ORDER BY e.lastname ASC, e.firstname ASC SEPARATOR '; ') AS {$alias}_names
         FROM {$table} crew
         LEFT JOIN tblemployees e ON e.employee_id = crew.{$employeeColumn}
         GROUP BY {$referenceColumn}
@@ -547,13 +549,27 @@ function coordinator_active_dispatch_plate_count($fleetId, $excludeReference = n
 
 function coordinator_normalized_dispatch_data(array $data)
 {
+    $driverSource = $data['driver_ids'] ?? $data['driver_id'] ?? [];
     $helperSource = $data['helper_ids'] ?? $data['helper_id'] ?? [];
+
+    if (!is_array($driverSource)) {
+        $driverSource = [$driverSource];
+    }
 
     if (!is_array($helperSource)) {
         $helperSource = [$helperSource];
     }
 
+    $driverIds = [];
     $helperIds = [];
+
+    foreach ($driverSource as $driverId) {
+        $driverId = (int) $driverId;
+
+        if ($driverId > 0) {
+            $driverIds[$driverId] = $driverId;
+        }
+    }
 
     foreach ($helperSource as $helperId) {
         $helperId = (int) $helperId;
@@ -568,7 +584,8 @@ function coordinator_normalized_dispatch_data(array $data)
         'dispatch_date' => normalize_booking_datetime($data['dispatch_date'] ?? ''),
         'route_id' => (int) ($data['route_id'] ?? 0),
         'plate_id' => (int) ($data['plate_id'] ?? 0),
-        'driver_id' => (int) ($data['driver_id'] ?? 0),
+        'driver_id' => (int) reset($driverIds),
+        'driver_ids' => array_values($driverIds),
         'helper_ids' => array_values($helperIds),
     ];
 }
@@ -582,7 +599,6 @@ function validate_dispatch_preparation(array $data, $requireCrew = true)
     $booking = $data['reference'] > 0 ? find_coordinator_booking_by_reference($data['reference']) : null;
     $route = $data['route_id'] > 0 ? find_booking_route_by_id($data['route_id']) : null;
     $fleet = $data['plate_id'] > 0 ? find_fleet_by_id($data['plate_id']) : null;
-    $driver = $data['driver_id'] > 0 ? find_employee_by_id($data['driver_id']) : null;
 
     if (!$booking) {
         $errors[] = 'Booking reference was not found.';
@@ -606,10 +622,17 @@ function validate_dispatch_preparation(array $data, $requireCrew = true)
         $errors[] = 'Selected plate is already dispatched on an active trip.';
     }
 
-    if ($requireCrew && $data['driver_id'] <= 0) {
-        $errors[] = 'Select a valid driver.';
-    } elseif ($data['driver_id'] > 0 && (!$driver || (string) ($driver['who_is'] ?? '') !== '1')) {
-        $errors[] = 'Selected driver is invalid.';
+    if ($requireCrew && count($data['driver_ids']) === 0) {
+        $errors[] = 'Select at least one driver.';
+    }
+
+    foreach ($data['driver_ids'] as $driverId) {
+        $driver = find_employee_by_id($driverId);
+
+        if (!$driver || (string) ($driver['who_is'] ?? '') !== '1') {
+            $errors[] = 'Selected driver is invalid.';
+            break;
+        }
     }
 
     if ($requireCrew && count($data['helper_ids']) === 0) {
@@ -669,16 +692,17 @@ function save_dispatch_preparation(array $data, $coordinatorId, $requireCrew = f
         $deleteDrivers = db()->prepare('DELETE FROM tbldispatch_driver WHERE dispatch_reference_id = :reference');
         $deleteDrivers->execute(['reference' => $normalized['reference']]);
 
-        if ($normalized['driver_id'] > 0) {
-            $driver = db()->prepare('
-                INSERT INTO tbldispatch_driver
-                    (dispatch_reference_id, dispatch_driver, dispatch_date, dispatch_customer, coordinator)
-                VALUES
-                    (:reference, :driver, :dispatch_date, :customer, :coordinator)
-            ');
+        $driver = db()->prepare('
+            INSERT INTO tbldispatch_driver
+                (dispatch_reference_id, dispatch_driver, dispatch_date, dispatch_customer, coordinator)
+            VALUES
+                (:reference, :driver, :dispatch_date, :customer, :coordinator)
+        ');
+
+        foreach ($normalized['driver_ids'] as $driverId) {
             $driver->execute([
                 'reference' => $normalized['reference'],
-                'driver' => $normalized['driver_id'],
+                'driver' => $driverId,
                 'dispatch_date' => $normalized['dispatch_date'],
                 'customer' => (int) $booking['customername'],
                 'coordinator' => $coordinatorId ? (int) $coordinatorId : null,
@@ -752,14 +776,14 @@ function dispatch_prepared_booking($reference, $coordinatorId)
         throw new InvalidArgumentException('Prepare the dispatch details before dispatching this booking.');
     }
 
-    $driverId = coordinator_first_crew_id('tbldispatch_driver', 'dispatch_reference_id', 'dispatch_driver', $reference);
+    $driverIds = coordinator_crew_ids('tbldispatch_driver', 'dispatch_reference_id', 'dispatch_driver', $reference);
     $helperIds = coordinator_crew_ids('tbldispatch_helper', 'dispatch_reference_id', 'dispatch_helper', $reference);
     $data = [
         'reference' => $reference,
         'dispatch_date' => $preparation['prep_dispatched_date'],
         'route_id' => $preparation['prep_ods'],
         'plate_id' => $preparation['prep_plaka'],
-        'driver_id' => $driverId,
+        'driver_ids' => $driverIds,
         'helper_ids' => $helperIds,
     ];
     $errors = validate_dispatch_preparation($data, true);
@@ -835,4 +859,59 @@ function save_and_dispatch_booking(array $data, $coordinatorId)
     save_dispatch_preparation($data, $coordinatorId, true);
 
     return dispatch_prepared_booking((int) ($data['reference'] ?? $data['booking_reference'] ?? 0), $coordinatorId);
+}
+
+function cancel_dispatched_booking($reference, $coordinatorId = null)
+{
+    ensure_coordinator_schema();
+
+    $reference = (int) $reference;
+
+    if ($reference <= 0) {
+        return false;
+    }
+
+    $stmt = db()->prepare('SELECT * FROM tbldispatched WHERE dis_referenceid = :reference LIMIT 1');
+    $stmt->execute(['reference' => $reference]);
+    $dispatch = $stmt->fetch();
+
+    if (!$dispatch) {
+        return false;
+    }
+
+    db()->beginTransaction();
+
+    try {
+        $prep = db()->prepare("
+            INSERT INTO tblcoord_dispatch_preparations
+                (prep_referenceid, prep_coordinator, prep_customer_name_id, prep_ods, prep_plaka, prep_dispatched_date, prep_status)
+            VALUES
+                (:reference, :coordinator, :customer, :route, :plate, :dispatch_date, 'prepared')
+            ON DUPLICATE KEY UPDATE
+                prep_coordinator = VALUES(prep_coordinator),
+                prep_customer_name_id = VALUES(prep_customer_name_id),
+                prep_ods = VALUES(prep_ods),
+                prep_plaka = VALUES(prep_plaka),
+                prep_dispatched_date = VALUES(prep_dispatched_date),
+                prep_status = 'prepared'
+        ");
+        $prep->execute([
+            'reference' => $reference,
+            'coordinator' => $coordinatorId ? (int) $coordinatorId : ($dispatch['dis_coordinator'] ?: null),
+            'customer' => (int) $dispatch['dis_customer_name_id'],
+            'route' => (int) $dispatch['dis_ods'],
+            'plate' => (int) $dispatch['dis_plaka'],
+            'dispatch_date' => $dispatch['dis_dispatched_date'],
+        ]);
+
+        $delete = db()->prepare('DELETE FROM tbldispatched WHERE dis_referenceid = :reference');
+        $delete->execute(['reference' => $reference]);
+
+        db()->commit();
+
+        return $delete->rowCount() > 0;
+    } catch (Throwable $error) {
+        db()->rollBack();
+        throw $error;
+    }
 }

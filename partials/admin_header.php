@@ -5,6 +5,20 @@ require_once APP_ROOT . '/includes/icons.php';
 $user = current_user();
 $pageTitle = $pageTitle ?? 'Administrator';
 $activeNav = $activeNav ?? 'dashboard';
+$canSeeCoordinatorMenu = in_array($user['role'] ?? '', ['Administrator', 'Coordinator'], true);
+$coordinatorSidebarCounts = $coordinatorSidebarCounts ?? null;
+$coordinatorStatus = $coordinatorStatus ?? '';
+
+if ($canSeeCoordinatorMenu && $coordinatorSidebarCounts === null) {
+    require_once APP_ROOT . '/includes/coordinator.php';
+
+    try {
+        $coordinatorSidebarCounts = coordinator_counts();
+    } catch (Throwable $error) {
+        $coordinatorSidebarCounts = ['pending' => 0, 'prepared' => 0, 'dispatched' => 0];
+    }
+}
+
 $navGroups = [
     'Control Center' => [
         [
@@ -115,6 +129,9 @@ $navGroups = [
     <link rel="apple-touch-icon" href="<?php echo h(app_url('assets/img/apple-touch-icon.png')); ?>">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://cdn.datatables.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="<?php echo h(app_url('assets/css/app.css')); ?>">
@@ -159,6 +176,33 @@ $navGroups = [
                                     <span class="nav-icon"><?php echo icon($item['icon']); ?></span>
                                     <span><?php echo h($item['label']); ?></span>
                                 </a>
+                            <?php endif; ?>
+                            <?php if ($item['key'] === 'coordinator' && $coordinatorSidebarCounts !== null): ?>
+                                <?php
+                                $activeCoordinatorStatus = $coordinatorStatus ?: (basename($_SERVER['SCRIPT_NAME'] ?? '') === 'coordinator.php' ? 'booked' : '');
+                                $coordinatorQueueLinks = [
+                                    'booked' => [
+                                        'label' => 'Booked',
+                                        'count' => ($coordinatorSidebarCounts['pending'] ?? 0) + ($coordinatorSidebarCounts['prepared'] ?? 0),
+                                    ],
+                                    'prepared' => [
+                                        'label' => 'Prepared',
+                                        'count' => $coordinatorSidebarCounts['prepared'] ?? 0,
+                                    ],
+                                    'dispatched' => [
+                                        'label' => 'Dispatched',
+                                        'count' => $coordinatorSidebarCounts['dispatched'] ?? 0,
+                                    ],
+                                ];
+                                ?>
+                                <div class="sidebar-subnav" aria-label="Coordinator queues">
+                                    <?php foreach ($coordinatorQueueLinks as $queueKey => $queue): ?>
+                                        <a class="sidebar-subnav-link <?php echo h($activeCoordinatorStatus === $queueKey ? 'active' : ''); ?>" href="<?php echo h(app_url('administrator/coordinator.php?status=' . $queueKey)); ?>">
+                                            <span><?php echo h($queue['label']); ?></span>
+                                            <strong><?php echo h($queue['count']); ?></strong>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
                             <?php endif; ?>
                         <?php endforeach; ?>
                     </div>

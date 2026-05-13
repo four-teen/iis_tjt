@@ -1139,21 +1139,279 @@
 })();
 
 (function () {
-    function syncHelperGroup(group) {
-        var countTarget = group.querySelector('[data-dispatch-helper-count]');
+    function syncCrewGroup(group) {
+        var countTarget = group.querySelector('[data-dispatch-selected-count], [data-dispatch-helper-count]');
+        var multiSelect = group.querySelector('[data-dispatch-multi-select], [data-dispatch-helper-select]');
+        var selectedCount;
 
         if (!countTarget) {
             return;
         }
 
-        countTarget.textContent = group.querySelectorAll('input[type="checkbox"]:checked').length;
+        if (multiSelect) {
+            selectedCount = Array.prototype.slice.call(multiSelect.selectedOptions || []).filter(function (option) {
+                return option.value !== '';
+            }).length;
+        } else {
+            selectedCount = group.querySelectorAll('input[type="checkbox"]:checked').length;
+        }
+
+        countTarget.textContent = selectedCount;
     }
 
-    document.querySelectorAll('[data-dispatch-helper-group]').forEach(function (group) {
-        syncHelperGroup(group);
+    window.syncDispatchCrewGroups = function (root) {
+        (root || document).querySelectorAll('[data-dispatch-crew-group], [data-dispatch-helper-group]').forEach(function (group) {
+            syncCrewGroup(group);
+        });
+    };
+
+    window.syncDispatchHelperGroups = window.syncDispatchCrewGroups;
+
+    document.querySelectorAll('[data-dispatch-crew-group], [data-dispatch-helper-group]').forEach(function (group) {
+        syncCrewGroup(group);
 
         group.addEventListener('change', function () {
-            syncHelperGroup(group);
+            syncCrewGroup(group);
         });
+    });
+})();
+
+(function () {
+    var selects = Array.prototype.slice.call(document.querySelectorAll('.js-example-basic-multiple, [data-select2]'));
+
+    if (!selects.length) {
+        return;
+    }
+
+    function loadStyle(id, href) {
+        if (document.getElementById(id)) {
+            return;
+        }
+
+        var link = document.createElement('link');
+
+        link.id = id;
+        link.rel = 'stylesheet';
+        link.href = href;
+        document.head.appendChild(link);
+    }
+
+    function loadScript(id, src, callback) {
+        var existing = document.getElementById(id);
+
+        if (existing) {
+            if (existing.dataset.loaded === 'true') {
+                callback(true);
+                return;
+            }
+
+            existing.addEventListener('load', function () {
+                callback(true);
+            });
+            existing.addEventListener('error', function () {
+                callback(false);
+            });
+            return;
+        }
+
+        var script = document.createElement('script');
+
+        script.id = id;
+        script.src = src;
+        script.async = true;
+        script.onload = function () {
+            script.dataset.loaded = 'true';
+            callback(true);
+        };
+        script.onerror = function () {
+            callback(false);
+        };
+
+        document.head.appendChild(script);
+    }
+
+    function initSelect2() {
+        if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
+            return;
+        }
+
+        window.jQuery(function () {
+            window.jQuery('.js-example-basic-multiple').each(function () {
+                var select = this;
+
+                if (select.dataset.select2Ready) {
+                    return;
+                }
+
+                window.jQuery(select).select2({
+                    width: '100%',
+                    placeholder: select.getAttribute('data-placeholder') || ''
+                }).on('change', function () {
+                    if (window.syncDispatchCrewGroups) {
+                        window.syncDispatchCrewGroups(document);
+                    }
+                });
+
+                select.dataset.select2Ready = '1';
+            });
+
+            selects.forEach(function (select) {
+                if (select.dataset.select2Ready) {
+                    return;
+                }
+
+                var placeholder = select.getAttribute('data-placeholder') || select.getAttribute('data-select2-placeholder') || '';
+                var isMultiple = select.multiple;
+
+                window.jQuery(select).select2({
+                    width: '100%',
+                    placeholder: placeholder,
+                    allowClear: select.getAttribute('data-allow-clear') === 'true',
+                    closeOnSelect: !isMultiple
+                }).on('change', function () {
+                    if (window.syncDispatchCrewGroups) {
+                        window.syncDispatchCrewGroups(document);
+                    }
+                });
+
+                select.dataset.select2Ready = '1';
+            });
+
+            if (window.syncDispatchCrewGroups) {
+                window.syncDispatchCrewGroups(document);
+            }
+        });
+    }
+
+    function ensureJQuery(callback) {
+        if (window.jQuery) {
+            callback(true);
+            return;
+        }
+
+        loadScript('app-jquery', 'https://code.jquery.com/jquery-3.7.1.min.js', callback);
+    }
+
+    loadStyle('app-select2-css', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css');
+    ensureJQuery(function (jqueryReady) {
+        if (!jqueryReady) {
+            return;
+        }
+
+        if (window.jQuery.fn && window.jQuery.fn.select2) {
+            initSelect2();
+            return;
+        }
+
+        loadScript('app-select2-js', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', function (select2Ready) {
+            if (select2Ready) {
+                initSelect2();
+            }
+        });
+    });
+})();
+
+(function () {
+    var form = document.querySelector('[data-dispatch-manage-form]');
+
+    if (!form) {
+        return;
+    }
+
+    function cleanText(value) {
+        return (value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function selectedText(select, fallback) {
+        var values;
+
+        if (!select) {
+            return fallback;
+        }
+
+        values = Array.prototype.slice.call(select.selectedOptions || []).filter(function (option) {
+            return option.value !== '';
+        }).map(function (option) {
+            return cleanText(option.textContent);
+        });
+
+        return values.length ? values.join(', ') : fallback;
+    }
+
+    function readableDate(value) {
+        var date;
+
+        if (!value) {
+            return 'Not set';
+        }
+
+        date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return date.toLocaleString('en-US', {
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+    }
+
+    function setPreview(modal, name, value) {
+        modal.querySelectorAll('[data-dispatch-preview="' + name + '"]').forEach(function (target) {
+            target.textContent = value;
+        });
+    }
+
+    function openModal(modal) {
+        var focusTarget;
+
+        modal.hidden = false;
+        modal.classList.add('is-open');
+        document.body.classList.add('modal-open');
+
+        focusTarget = modal.querySelector('button[type="submit"], button, input, select, textarea');
+
+        if (focusTarget) {
+            focusTarget.focus();
+        }
+    }
+
+    function renderPreview(modal) {
+        setPreview(modal, 'dispatch_date', readableDate((form.querySelector('#dispatch-date') || {}).value || ''));
+        setPreview(modal, 'plate', selectedText(form.querySelector('#dispatch-plate'), 'Not selected'));
+        setPreview(modal, 'route', selectedText(form.querySelector('#dispatch-route'), 'Not selected'));
+        setPreview(modal, 'driver', selectedText(form.querySelector('#dispatch-driver'), 'Not selected'));
+        setPreview(modal, 'helpers', selectedText(form.querySelector('#dispatch-helpers'), 'No helpers selected'));
+    }
+
+    form.addEventListener('submit', function (event) {
+        var submitter = event.submitter || document.activeElement;
+        var modalId;
+        var modal;
+
+        if (!submitter || !submitter.matches('[data-dispatch-preview-open]')) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        modalId = submitter.getAttribute('data-dispatch-preview-open');
+        modal = modalId ? document.getElementById(modalId) : null;
+
+        if (!modal) {
+            return;
+        }
+
+        renderPreview(modal);
+        openModal(modal);
     });
 })();
