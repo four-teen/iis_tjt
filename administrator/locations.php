@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf($token)) {
         flash('error', 'Your session expired. Please try again.');
-        redirect_to('administrator/locations.php');
+        redirect_to('Administrator/locations.php');
     }
 
     try {
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Location action failed: ' . $error->getMessage());
     }
 
-    redirect_to('administrator/locations.php');
+    redirect_to('Administrator/locations.php');
 }
 
 $locations = list_locations();
@@ -121,7 +121,7 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="post" action="<?php echo h(app_url('administrator/locations.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="locations">
+        <form method="post" action="<?php echo h(app_url('Administrator/locations.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="locations">
             <?php echo csrf_field(); ?>
             <input type="hidden" name="action" value="bulk_delete">
 
@@ -175,7 +175,7 @@ require APP_ROOT . '/partials/admin_header.php';
             <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-            <form method="post" action="<?php echo h(app_url('administrator/locations.php')); ?>" class="stack-form">
+            <form method="post" action="<?php echo h(app_url('Administrator/locations.php')); ?>" class="stack-form">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="create">
                 <label for="location">Location</label>
@@ -205,7 +205,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/locations.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/locations.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="locationid" value="<?php echo h($location['locationid']); ?>">
@@ -236,7 +236,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/locations.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/locations.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="locationid" value="<?php echo h($location['locationid']); ?>">

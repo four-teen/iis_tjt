@@ -352,6 +352,89 @@ CREATE TABLE IF NOT EXISTS tblcustomerinformation (
         ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS tblbudget_od (
+    od_budget_id INT(11) NOT NULL AUTO_INCREMENT,
+    od_customerinformationid INT(11) NOT NULL,
+    od_budget DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    od_budget_status TINYINT(1) NOT NULL DEFAULT 1,
+    created_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (od_budget_id),
+    UNIQUE KEY uq_tblbudget_od_route (od_customerinformationid),
+    KEY idx_tblbudget_od_status (od_budget_status),
+    CONSTRAINT fk_tblbudget_od_route
+        FOREIGN KEY (od_customerinformationid) REFERENCES tblcustomerinformation (customerinformationid)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_tblbudget_od_created_by
+        FOREIGN KEY (created_by) REFERENCES accounts (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_tblbudget_od_updated_by
+        FOREIGN KEY (updated_by) REFERENCES accounts (id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tbldispatch_budget (
+    dis_budget_id INT(11) NOT NULL AUTO_INCREMENT,
+    dis_budget_referenceid BIGINT NOT NULL,
+    dis_budget_acc_name INT(11) NOT NULL,
+    dis_budget_platenum INT(11) NOT NULL,
+    dis_budget_od INT(11) NOT NULL,
+    dis_budget_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    dis_budget_dated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    remarks VARCHAR(100) NOT NULL DEFAULT 'Regular',
+    created_by BIGINT UNSIGNED NULL,
+    voided_at DATETIME NULL,
+    voided_by BIGINT UNSIGNED NULL,
+    void_reason VARCHAR(160) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (dis_budget_id),
+    KEY idx_tbldispatch_budget_reference (dis_budget_referenceid),
+    KEY idx_tbldispatch_budget_employee (dis_budget_acc_name),
+    KEY idx_tbldispatch_budget_route (dis_budget_od),
+    KEY idx_tbldispatch_budget_voided (voided_at),
+    CONSTRAINT fk_tbldispatch_budget_employee
+        FOREIGN KEY (dis_budget_acc_name) REFERENCES tblemployees (employee_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_tbldispatch_budget_fleet
+        FOREIGN KEY (dis_budget_platenum) REFERENCES tblfleet (fleetid)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_tbldispatch_budget_route
+        FOREIGN KEY (dis_budget_od) REFERENCES tblcustomerinformation (customerinformationid)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_tbldispatch_budget_created_by
+        FOREIGN KEY (created_by) REFERENCES accounts (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_tbldispatch_budget_voided_by
+        FOREIGN KEY (voided_by) REFERENCES accounts (id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tblowner_budget (
+    owner_budget_id INT(11) NOT NULL AUTO_INCREMENT,
+    owners_id INT(11) NOT NULL,
+    date_released DATE NOT NULL,
+    budget_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    deleted CHAR(1) NOT NULL DEFAULT 'N',
+    created_by BIGINT UNSIGNED NULL,
+    deleted_by BIGINT UNSIGNED NULL,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (owner_budget_id),
+    KEY idx_tblowner_budget_owner (owners_id),
+    KEY idx_tblowner_budget_deleted (deleted),
+    CONSTRAINT fk_tblowner_budget_owner
+        FOREIGN KEY (owners_id) REFERENCES tblemployees (employee_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_tblowner_budget_created_by
+        FOREIGN KEY (created_by) REFERENCES accounts (id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_tblowner_budget_deleted_by
+        FOREIGN KEY (deleted_by) REFERENCES accounts (id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS tblcustomerinformation_new_rates (
     customerinformationid INT(11) NOT NULL,
     driversrate DOUBLE NOT NULL,

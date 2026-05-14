@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf($token)) {
         flash('error', 'Your session expired. Please try again.');
-        redirect_to('administrator/employees.php');
+        redirect_to('Administrator/employees.php');
     }
 
     try {
@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Employee action failed: ' . $error->getMessage());
     }
 
-    redirect_to('administrator/employees.php');
+    redirect_to('Administrator/employees.php');
 }
 
 $employeeTypes = employee_types();
@@ -144,7 +144,7 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="post" action="<?php echo h(app_url('administrator/employees.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="employees">
+        <form method="post" action="<?php echo h(app_url('Administrator/employees.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="employees">
             <?php echo csrf_field(); ?>
             <input type="hidden" name="action" value="bulk_delete">
 
@@ -204,7 +204,7 @@ require APP_ROOT . '/partials/admin_header.php';
             <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-            <form method="post" action="<?php echo h(app_url('administrator/employees.php')); ?>" class="stack-form">
+            <form method="post" action="<?php echo h(app_url('Administrator/employees.php')); ?>" class="stack-form">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="create">
 
@@ -245,7 +245,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/employees.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/employees.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="employee_id" value="<?php echo h($employee['employee_id']); ?>">
@@ -286,7 +286,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/employees.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/employees.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="employee_id" value="<?php echo h($employee['employee_id']); ?>">

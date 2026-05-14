@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf($token)) {
         flash('error', 'Your session expired. Please try again.');
-        redirect_to('administrator/accounts.php');
+        redirect_to('Administrator/accounts.php');
     }
 
     try {
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Account action failed: ' . $error->getMessage());
     }
 
-    redirect_to('administrator/accounts.php');
+    redirect_to('Administrator/accounts.php');
 }
 
 $roles = account_roles();
@@ -186,7 +186,7 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="post" action="<?php echo h(app_url('administrator/accounts.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="accounts">
+        <form method="post" action="<?php echo h(app_url('Administrator/accounts.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="accounts">
             <?php echo csrf_field(); ?>
             <input type="hidden" name="action" value="bulk_delete">
 
@@ -262,7 +262,7 @@ require APP_ROOT . '/partials/admin_header.php';
             <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-            <form method="post" action="<?php echo h(app_url('administrator/accounts.php')); ?>" class="stack-form">
+            <form method="post" action="<?php echo h(app_url('Administrator/accounts.php')); ?>" class="stack-form">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="create">
 
@@ -318,7 +318,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/accounts.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/accounts.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="account_id" value="<?php echo h($account['id']); ?>">
@@ -371,7 +371,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/accounts.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/accounts.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="reset_password">
                     <input type="hidden" name="account_id" value="<?php echo h($account['id']); ?>">
@@ -399,7 +399,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/accounts.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/accounts.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="account_id" value="<?php echo h($account['id']); ?>">

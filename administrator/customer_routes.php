@@ -11,12 +11,12 @@ $customer = find_customer_by_id($customerId);
 
 if (!$customer) {
     flash('error', 'Customer record was not found.');
-    redirect_to('administrator/customers.php');
+    redirect_to('Administrator/customers.php');
 }
 
 $pageTitle = 'Customer Routes';
 $activeNav = 'customers';
-$returnUrl = 'administrator/customer_routes.php?customerid=' . $customerId;
+$returnUrl = 'Administrator/customer_routes.php?customerid=' . $customerId;
 
 function route_selected($value, $current)
 {
@@ -167,7 +167,7 @@ require APP_ROOT . '/partials/admin_header.php';
     </div>
     <div class="hero-actions">
         <button type="button" class="btn btn-primary" data-modal-open="create-customer-route-modal"><?php echo icon('plus'); ?> New Origin / Destination</button>
-        <a class="btn btn-light" href="<?php echo h(app_url('administrator/customers.php')); ?>">Back to Customers</a>
+        <a class="btn btn-light" href="<?php echo h(app_url('Administrator/customers.php')); ?>">Back to Customers</a>
         <div class="count-badges" aria-label="Customer route overview">
             <span class="count-badge">Routes <strong><?php echo h($counts['total']); ?></strong></span>
             <span class="count-badge count-badge-success">Origins <strong><?php echo h($counts['origins']); ?></strong></span>

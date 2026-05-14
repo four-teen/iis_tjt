@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/accounts.php';
 require_once __DIR__ . '/../includes/master_data.php';
 
-require_login();
+require_role('Administrator');
 
 $pageTitle = 'Dashboard';
 $activeNav = 'dashboard';
@@ -147,33 +147,33 @@ $readinessChecks = [
 ];
 
 $foundationItems = [
-    readiness_item('Active Users', $accountCounts['active'] . ' / ' . $accountCounts['total'], 'Accounts that can access the system.', $accountCounts['active'] > 0, 'administrator/accounts.php'),
-    readiness_item('Active Customers', $customerCounts['active'] . ' / ' . $customerCounts['total'], 'Customers available for booking.', $customerCounts['active'] > 0, 'administrator/customers.php'),
-    readiness_item('Active Locations', $locationCounts['active'] . ' / ' . $locationCounts['total'], 'Origins, destinations, pickups, and drops.', $locationCounts['active'] > 0, 'administrator/locations.php'),
-    readiness_item('Delivery Types', $routeCounts['delivery_types'], 'Delivery categories for rate and booking forms.', $routeCounts['delivery_types'] > 0, 'administrator/delivery_types.php'),
-    readiness_item('Truck Types', $routeCounts['truck_types'], 'Truck classifications for route matching.', $routeCounts['truck_types'] > 0, 'administrator/truck_types.php'),
-    readiness_item('Drivers / Helpers', $employeeCounts['1'] . ' / ' . $employeeCounts['2'], 'Crew pool available for dispatch assignment.', $employeeCounts['1'] > 0 && $employeeCounts['2'] > 0, 'administrator/employees.php'),
-    readiness_item('Fleet Units', $fleetCounts['total'], 'Registered trucks available for booking dispatch.', $fleetCounts['total'] > 0, 'administrator/fleet.php'),
-    readiness_item('Customer Routes', $routeCounts['total'], 'Route and rate records available to quote bookings.', $routeCounts['total'] > 0, 'administrator/customers.php'),
+    readiness_item('Active Users', $accountCounts['active'] . ' / ' . $accountCounts['total'], 'Accounts that can access the system.', $accountCounts['active'] > 0, 'Administrator/accounts.php'),
+    readiness_item('Active Customers', $customerCounts['active'] . ' / ' . $customerCounts['total'], 'Customers available for booking.', $customerCounts['active'] > 0, 'Administrator/customers.php'),
+    readiness_item('Active Locations', $locationCounts['active'] . ' / ' . $locationCounts['total'], 'Origins, destinations, pickups, and drops.', $locationCounts['active'] > 0, 'Administrator/locations.php'),
+    readiness_item('Delivery Types', $routeCounts['delivery_types'], 'Delivery categories for rate and booking forms.', $routeCounts['delivery_types'] > 0, 'Administrator/delivery_types.php'),
+    readiness_item('Truck Types', $routeCounts['truck_types'], 'Truck classifications for route matching.', $routeCounts['truck_types'] > 0, 'Administrator/truck_types.php'),
+    readiness_item('Drivers / Helpers', $employeeCounts['1'] . ' / ' . $employeeCounts['2'], 'Crew pool available for dispatch assignment.', $employeeCounts['1'] > 0 && $employeeCounts['2'] > 0, 'Administrator/employees.php'),
+    readiness_item('Fleet Units', $fleetCounts['total'], 'Registered trucks available for booking dispatch.', $fleetCounts['total'] > 0, 'Administrator/fleet.php'),
+    readiness_item('Customer Routes', $routeCounts['total'], 'Route and rate records available to quote bookings.', $routeCounts['total'] > 0, 'Administrator/customers.php'),
 ];
 
 $routeQualityItems = [
-    readiness_item('Customers Without Routes', $readinessChecks['active_customers_without_routes'], 'Every active customer should have at least one route/rate setup.', $readinessChecks['active_customers_without_routes'] === 0, 'administrator/customers.php'),
-    readiness_item('Routes With Missing Customer', $readinessChecks['routes_with_bad_customer'], 'Route/rate rows must map to an active customer.', $readinessChecks['routes_with_bad_customer'] === 0, 'administrator/customers.php'),
-    readiness_item('Zero Delivery Rates', $readinessChecks['routes_with_zero_deliveryrate'], 'Delivery rates must be encoded before booking billing can work.', $readinessChecks['routes_with_zero_deliveryrate'] === 0, 'administrator/customers.php'),
-    readiness_item('Zero Driver Rates', $readinessChecks['routes_with_zero_driverrate'], 'Driver rates are needed for payroll/liquidation readiness.', $readinessChecks['routes_with_zero_driverrate'] === 0, 'administrator/customers.php'),
-    readiness_item('Zero Helper Rates', $readinessChecks['routes_with_zero_helperrate'], 'Helper rates are needed for payroll/liquidation readiness.', $readinessChecks['routes_with_zero_helperrate'] === 0, 'administrator/customers.php'),
-    readiness_item('Origins Not In Locations', $readinessChecks['route_origins_not_locations'], 'Route origins should match active location records.', $readinessChecks['route_origins_not_locations'] === 0, 'administrator/locations.php'),
-    readiness_item('Destinations Not In Locations', $readinessChecks['route_destinations_not_locations'], 'Route destinations should match active location records.', $readinessChecks['route_destinations_not_locations'] === 0, 'administrator/locations.php'),
+    readiness_item('Customers Without Routes', $readinessChecks['active_customers_without_routes'], 'Every active customer should have at least one route/rate setup.', $readinessChecks['active_customers_without_routes'] === 0, 'Administrator/customers.php'),
+    readiness_item('Routes With Missing Customer', $readinessChecks['routes_with_bad_customer'], 'Route/rate rows must map to an active customer.', $readinessChecks['routes_with_bad_customer'] === 0, 'Administrator/customers.php'),
+    readiness_item('Zero Delivery Rates', $readinessChecks['routes_with_zero_deliveryrate'], 'Delivery rates must be encoded before booking billing can work.', $readinessChecks['routes_with_zero_deliveryrate'] === 0, 'Administrator/customers.php'),
+    readiness_item('Zero Driver Rates', $readinessChecks['routes_with_zero_driverrate'], 'Driver rates are needed for payroll/liquidation readiness.', $readinessChecks['routes_with_zero_driverrate'] === 0, 'Administrator/customers.php'),
+    readiness_item('Zero Helper Rates', $readinessChecks['routes_with_zero_helperrate'], 'Helper rates are needed for payroll/liquidation readiness.', $readinessChecks['routes_with_zero_helperrate'] === 0, 'Administrator/customers.php'),
+    readiness_item('Origins Not In Locations', $readinessChecks['route_origins_not_locations'], 'Route origins should match active location records.', $readinessChecks['route_origins_not_locations'] === 0, 'Administrator/locations.php'),
+    readiness_item('Destinations Not In Locations', $readinessChecks['route_destinations_not_locations'], 'Route destinations should match active location records.', $readinessChecks['route_destinations_not_locations'] === 0, 'Administrator/locations.php'),
 ];
 
 $fleetReadinessItems = [
-    readiness_item('Fleet Without Profile', $readinessChecks['fleet_without_profile'], 'Each truck needs a technical profile for dispatch filtering.', $readinessChecks['fleet_without_profile'] === 0, 'administrator/fleet.php'),
-    readiness_item('Fleet Missing Specs', $readinessChecks['fleet_missing_specs'], 'Truck type, van type, make, body, color, plate color, and LTFRB status must be encoded.', $readinessChecks['fleet_missing_specs'] === 0, 'administrator/fleet.php'),
-    readiness_item('Fleet Missing CPC', $readinessChecks['fleet_missing_cpc'], 'CPC details are required for regulatory readiness.', $readinessChecks['fleet_missing_cpc'] === 0, 'administrator/fleet.php'),
-    readiness_item('Expired Registration', $readinessChecks['fleet_expired_registration'], 'Expired units should be held from dispatch selection.', $readinessChecks['fleet_expired_registration'] === 0, 'administrator/fleet.php', true),
-    readiness_item('Fleet Without Driver', $readinessChecks['fleet_without_driver'], 'Booked trucks should have an assigned driver.', $readinessChecks['fleet_without_driver'] === 0, 'administrator/fleet.php'),
-    readiness_item('Fleet Without Helper', $readinessChecks['fleet_without_helper'], 'Booked trucks should have an assigned helper when required.', $readinessChecks['fleet_without_helper'] === 0, 'administrator/fleet.php'),
+    readiness_item('Fleet Without Profile', $readinessChecks['fleet_without_profile'], 'Each truck needs a technical profile for dispatch filtering.', $readinessChecks['fleet_without_profile'] === 0, 'Administrator/fleet.php'),
+    readiness_item('Fleet Missing Specs', $readinessChecks['fleet_missing_specs'], 'Truck type, van type, make, body, color, plate color, and LTFRB status must be encoded.', $readinessChecks['fleet_missing_specs'] === 0, 'Administrator/fleet.php'),
+    readiness_item('Fleet Missing CPC', $readinessChecks['fleet_missing_cpc'], 'CPC details are required for regulatory readiness.', $readinessChecks['fleet_missing_cpc'] === 0, 'Administrator/fleet.php'),
+    readiness_item('Expired Registration', $readinessChecks['fleet_expired_registration'], 'Expired units should be held from dispatch selection.', $readinessChecks['fleet_expired_registration'] === 0, 'Administrator/fleet.php', true),
+    readiness_item('Fleet Without Driver', $readinessChecks['fleet_without_driver'], 'Booked trucks should have an assigned driver.', $readinessChecks['fleet_without_driver'] === 0, 'Administrator/fleet.php'),
+    readiness_item('Fleet Without Helper', $readinessChecks['fleet_without_helper'], 'Booked trucks should have an assigned helper when required.', $readinessChecks['fleet_without_helper'] === 0, 'Administrator/fleet.php'),
 ];
 
 $allReadinessItems = array_merge($foundationItems, $routeQualityItems, $fleetReadinessItems);

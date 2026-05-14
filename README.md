@@ -32,7 +32,10 @@ Change the default administrator password after first login.
 - `index.php` - entry redirect
 - `login.php` - login form and database authentication
 - `logout.php` - session logout
-- `administrator/` - protected admin pages
+- `Administrator/` - administrator module pages
+- `Customer Service/` - customer service booking module pages
+- `Coordinator/` - coordinator dispatch module pages
+- `Budget/` - budget module pages
 - `includes/` - app bootstrap and authentication helpers
 - `partials/` - reusable layout pieces
 - `config/` - app settings

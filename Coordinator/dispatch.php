@@ -8,8 +8,8 @@ require_any_role(['Administrator', 'Coordinator']);
 $reference = (int) ($_GET['reference'] ?? ($_POST['reference'] ?? 0));
 $pageTitle = 'Manage Dispatch';
 $activeNav = 'coordinator';
-$returnUrl = 'administrator/coordinator.php';
-$dispatchUrl = 'administrator/coordinator_dispatch.php?reference=' . urlencode((string) $reference);
+$returnUrl = 'Coordinator/index.php';
+$dispatchUrl = 'Coordinator/dispatch.php?reference=' . urlencode((string) $reference);
 
 ensure_coordinator_schema();
 

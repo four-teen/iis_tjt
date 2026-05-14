@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf($token)) {
         flash('error', 'Your session expired. Please try again.');
-        redirect_to('administrator/customers.php');
+        redirect_to('Administrator/customers.php');
     }
 
     try {
@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Customer action failed: ' . $error->getMessage());
     }
 
-    redirect_to('administrator/customers.php');
+    redirect_to('Administrator/customers.php');
 }
 
 $customers = list_customers();
@@ -126,7 +126,7 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="post" action="<?php echo h(app_url('administrator/customers.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="customers">
+        <form method="post" action="<?php echo h(app_url('Administrator/customers.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="customers">
             <?php echo csrf_field(); ?>
             <input type="hidden" name="action" value="bulk_delete">
 
@@ -152,12 +152,12 @@ require APP_ROOT . '/partials/admin_header.php';
                             <tr data-infinite-item>
                                 <td class="select-column"><input type="checkbox" name="ids[]" value="<?php echo h($customer['customerid']); ?>" data-bulk-delete-item aria-label="Select <?php echo h($customer['customername']); ?>"></td>
                                 <td><strong><?php echo h($customer['soa']); ?></strong></td>
-                                <td><a class="table-link" href="<?php echo h(app_url('administrator/customer_routes.php?customerid=' . $customer['customerid'])); ?>"><?php echo h($customer['customername']); ?></a></td>
+                                <td><a class="table-link" href="<?php echo h(app_url('Administrator/customer_routes.php?customerid=' . $customer['customerid'])); ?>"><?php echo h($customer['customername']); ?></a></td>
                                 <td><?php echo h($customer['customeraddress']); ?></td>
                                 <td><span class="<?php echo h(customer_badge_class($customer['status'])); ?>"><?php echo h(customer_status_label($customer['status'])); ?></span></td>
                                 <td class="table-actions">
                                     <div class="btn-group action-group" role="group" aria-label="Customer actions">
-                                        <a class="btn btn-light btn-sm btn-icon" href="<?php echo h(app_url('administrator/customer_routes.php?customerid=' . $customer['customerid'])); ?>"><?php echo icon('map'); ?> Routes (<?php echo h($customerRouteTotals[(int) $customer['customerid']] ?? 0); ?>)</a>
+                                        <a class="btn btn-light btn-sm btn-icon" href="<?php echo h(app_url('Administrator/customer_routes.php?customerid=' . $customer['customerid'])); ?>"><?php echo icon('map'); ?> Routes (<?php echo h($customerRouteTotals[(int) $customer['customerid']] ?? 0); ?>)</a>
                                         <button type="button" class="btn btn-warning btn-sm btn-icon" data-modal-open="edit-customer-<?php echo h($customer['customerid']); ?>"><?php echo icon('edit'); ?> Edit</button>
                                         <button type="button" class="btn btn-danger btn-sm btn-icon" data-modal-open="delete-customer-<?php echo h($customer['customerid']); ?>"><?php echo icon('trash'); ?> Delete</button>
                                     </div>
@@ -189,7 +189,7 @@ require APP_ROOT . '/partials/admin_header.php';
             <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-            <form method="post" action="<?php echo h(app_url('administrator/customers.php')); ?>" class="stack-form">
+            <form method="post" action="<?php echo h(app_url('Administrator/customers.php')); ?>" class="stack-form">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="create">
 
@@ -229,7 +229,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/customers.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/customers.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="customerid" value="<?php echo h($customer['customerid']); ?>">
@@ -269,7 +269,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/customers.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/customers.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="customerid" value="<?php echo h($customer['customerid']); ?>">

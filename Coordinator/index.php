@@ -7,7 +7,7 @@ require_any_role(['Administrator', 'Coordinator']);
 
 $pageTitle = 'Coordinator';
 $activeNav = 'coordinator';
-$returnUrl = 'administrator/coordinator.php';
+$returnUrl = 'Coordinator/index.php';
 $coordinatorStatus = strtolower((string) ($_GET['status'] ?? 'booked'));
 $coordinatorStatus = in_array($coordinatorStatus, ['booked', 'prepared', 'dispatched'], true) ? $coordinatorStatus : 'booked';
 
@@ -21,7 +21,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if (!verify_csrf($token)) {
         flash('error', 'Your session expired. Please try again.');
-        redirect_to('administrator/coordinator.php?status=dispatched');
+        redirect_to('Coordinator/index.php?status=dispatched');
     }
 
     try {
@@ -30,18 +30,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
             if (cancel_dispatched_booking($reference, $coordinatorId)) {
                 flash('success', 'Dispatched operation was returned to booked routes.');
-                redirect_to('administrator/coordinator.php?status=booked');
+                redirect_to('Coordinator/index.php?status=booked');
             }
 
             flash('error', 'Dispatched operation was not found.');
-            redirect_to('administrator/coordinator.php?status=dispatched');
+            redirect_to('Coordinator/index.php?status=dispatched');
         }
     } catch (Throwable $error) {
         flash('error', 'Coordinator action failed: ' . $error->getMessage());
-        redirect_to('administrator/coordinator.php?status=dispatched');
+        redirect_to('Coordinator/index.php?status=dispatched');
     }
 
-    redirect_to('administrator/coordinator.php?status=' . $coordinatorStatus);
+    redirect_to('Coordinator/index.php?status=' . $coordinatorStatus);
 }
 
 $counts = coordinator_counts();
@@ -78,9 +78,9 @@ require APP_ROOT . '/partials/admin_header.php';
     </div>
     <div class="hero-actions">
         <div class="count-badges" aria-label="Coordinator overview">
-            <a class="count-badge count-badge-warning <?php echo h($coordinatorStatus === 'booked' ? 'count-badge-active' : ''); ?>" href="<?php echo h(app_url('administrator/coordinator.php?status=booked')); ?>">Booked <strong><?php echo h($counts['pending'] + $counts['prepared']); ?></strong></a>
-            <a class="count-badge count-badge-success <?php echo h($coordinatorStatus === 'prepared' ? 'count-badge-active' : ''); ?>" href="<?php echo h(app_url('administrator/coordinator.php?status=prepared')); ?>">Prepared <strong><?php echo h($counts['prepared']); ?></strong></a>
-            <a class="count-badge <?php echo h($coordinatorStatus === 'dispatched' ? 'count-badge-active' : ''); ?>" href="<?php echo h(app_url('administrator/coordinator.php?status=dispatched')); ?>">Dispatched <strong><?php echo h($counts['dispatched']); ?></strong></a>
+            <a class="count-badge count-badge-warning <?php echo h($coordinatorStatus === 'booked' ? 'count-badge-active' : ''); ?>" href="<?php echo h(app_url('Coordinator/index.php?status=booked')); ?>">Booked <strong><?php echo h($counts['pending'] + $counts['prepared']); ?></strong></a>
+            <a class="count-badge count-badge-success <?php echo h($coordinatorStatus === 'prepared' ? 'count-badge-active' : ''); ?>" href="<?php echo h(app_url('Coordinator/index.php?status=prepared')); ?>">Prepared <strong><?php echo h($counts['prepared']); ?></strong></a>
+            <a class="count-badge <?php echo h($coordinatorStatus === 'dispatched' ? 'count-badge-active' : ''); ?>" href="<?php echo h(app_url('Coordinator/index.php?status=dispatched')); ?>">Dispatched <strong><?php echo h($counts['dispatched']); ?></strong></a>
         </div>
     </div>
 </section>
@@ -150,7 +150,7 @@ require APP_ROOT . '/partials/admin_header.php';
                                 <span><?php echo h(($dispatch['helper_count'] ? $dispatch['helper_count'] . ' helper(s): ' . $dispatch['helper_names'] : 'No helpers selected')); ?></span>
                             </td>
                             <td class="table-actions coordinator-actions">
-                                <form method="post" action="<?php echo h(app_url('administrator/coordinator.php?status=dispatched')); ?>" class="dispatch-inline-form" onsubmit="return confirm('Return this dispatched operation to booked routes?');">
+                                <form method="post" action="<?php echo h(app_url('Coordinator/index.php?status=dispatched')); ?>" class="dispatch-inline-form" onsubmit="return confirm('Return this dispatched operation to booked routes?');">
                                     <?php echo csrf_field(); ?>
                                     <input type="hidden" name="action" value="cancel_dispatch">
                                     <input type="hidden" name="reference" value="<?php echo h($dispatch['dis_referenceid']); ?>">
@@ -189,7 +189,7 @@ require APP_ROOT . '/partials/admin_header.php';
                         $rowNumber++;
                         $readiness = coordinator_readiness($booking);
                         $lapsed = booking_lapsed_label($booking['pickupdate']);
-                        $manageUrl = app_url('administrator/coordinator_dispatch.php?reference=' . urlencode((string) $booking['bookingid']));
+                        $manageUrl = app_url('Coordinator/dispatch.php?reference=' . urlencode((string) $booking['bookingid']));
                         ?>
                         <tr>
                             <td class="number-cell"><?php echo h($rowNumber); ?></td>

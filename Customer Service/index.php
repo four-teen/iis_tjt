@@ -8,7 +8,7 @@ require_any_role(['Administrator', 'Customer Service']);
 
 $pageTitle = 'Customer Service';
 $activeNav = 'customer_service';
-$returnUrl = 'administrator/customer_service.php';
+$returnUrl = 'Customer%20Service/index.php';
 
 function booking_checked($value, $current)
 {

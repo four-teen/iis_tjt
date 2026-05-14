@@ -124,15 +124,19 @@ function user_has_any_role($roles)
 
 function role_home_path($role)
 {
+    if ($role === 'Budget' || $role === 'Finance') {
+        return 'Budget/index.php';
+    }
+
     if ($role === 'Customer Service') {
-        return 'administrator/customer_service.php';
+        return 'Customer%20Service/index.php';
     }
 
     if ($role === 'Coordinator') {
-        return 'administrator/coordinator.php';
+        return 'Coordinator/index.php';
     }
 
-    return 'administrator/index.php';
+    return 'Administrator/index.php';
 }
 
 function redirect_if_logged_in()

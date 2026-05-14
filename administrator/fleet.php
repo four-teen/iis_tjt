@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf($token)) {
         flash('error', 'Your session expired. Please try again.');
-        redirect_to('administrator/fleet.php');
+        redirect_to('Administrator/fleet.php');
     }
 
     try {
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Fleet action failed: ' . $error->getMessage());
     }
 
-    redirect_to('administrator/fleet.php');
+    redirect_to('Administrator/fleet.php');
 }
 
 $fleets = list_fleets();
@@ -155,7 +155,7 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="post" action="<?php echo h(app_url('administrator/fleet.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="fleet records">
+        <form method="post" action="<?php echo h(app_url('Administrator/fleet.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="fleet records">
             <?php echo csrf_field(); ?>
             <input type="hidden" name="action" value="bulk_delete">
 
@@ -191,7 +191,7 @@ require APP_ROOT . '/partials/admin_header.php';
                                 <td><?php echo h(fleet_profile_label($fleet)); ?></td>
                                 <td class="table-actions">
                                     <div class="btn-group action-group" role="group" aria-label="Fleet actions">
-                                        <a class="btn btn-light btn-sm btn-icon" href="<?php echo h(app_url('administrator/fleet_profile.php?fleetid=' . $fleet['fleetid'])); ?>"><?php echo icon('truck'); ?> Profile</a>
+                                        <a class="btn btn-light btn-sm btn-icon" href="<?php echo h(app_url('Administrator/fleet_profile.php?fleetid=' . $fleet['fleetid'])); ?>"><?php echo icon('truck'); ?> Profile</a>
                                         <button type="button" class="btn btn-warning btn-sm btn-icon" data-modal-open="edit-fleet-<?php echo h($fleet['fleetid']); ?>"><?php echo icon('edit'); ?> Edit</button>
                                         <button type="button" class="btn btn-danger btn-sm btn-icon" data-modal-open="delete-fleet-<?php echo h($fleet['fleetid']); ?>"><?php echo icon('trash'); ?> Delete</button>
                                     </div>
@@ -220,7 +220,7 @@ require APP_ROOT . '/partials/admin_header.php';
             <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-            <form method="post" action="<?php echo h(app_url('administrator/fleet.php')); ?>" class="stack-form">
+            <form method="post" action="<?php echo h(app_url('Administrator/fleet.php')); ?>" class="stack-form">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="create">
                 <div class="form-grid">
@@ -279,7 +279,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/fleet.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/fleet.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="fleetid" value="<?php echo h($fleet['fleetid']); ?>">
@@ -339,7 +339,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/fleet.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/fleet.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="fleetid" value="<?php echo h($fleet['fleetid']); ?>">

@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf($token)) {
         flash('error', 'Your session expired. Please try again.');
-        redirect_to('administrator/truck_types.php');
+        redirect_to('Administrator/truck_types.php');
     }
 
     try {
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Truck type action failed: ' . $error->getMessage());
     }
 
-    redirect_to('administrator/truck_types.php');
+    redirect_to('Administrator/truck_types.php');
 }
 
 $truckTypes = list_truck_types();
@@ -70,7 +70,7 @@ require APP_ROOT . '/partials/admin_header.php';
             </div>
         </div>
 
-        <form method="post" action="<?php echo h(app_url('administrator/truck_types.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="truck types">
+        <form method="post" action="<?php echo h(app_url('Administrator/truck_types.php')); ?>" class="bulk-delete-form" data-bulk-delete-form data-bulk-delete-label="truck types">
             <?php echo csrf_field(); ?>
             <input type="hidden" name="action" value="bulk_delete">
 
@@ -121,7 +121,7 @@ require APP_ROOT . '/partials/admin_header.php';
             <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-            <form method="post" action="<?php echo h(app_url('administrator/truck_types.php')); ?>" class="stack-form">
+            <form method="post" action="<?php echo h(app_url('Administrator/truck_types.php')); ?>" class="stack-form">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="create">
                 <label for="trucktype">Truck Type</label>
@@ -146,7 +146,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/truck_types.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/truck_types.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="trucktypeid" value="<?php echo h($type['trucktypeid']); ?>">
@@ -172,7 +172,7 @@ require APP_ROOT . '/partials/admin_header.php';
                 <button type="button" class="icon-close" data-modal-close aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="post" action="<?php echo h(app_url('administrator/truck_types.php')); ?>" class="stack-form">
+                <form method="post" action="<?php echo h(app_url('Administrator/truck_types.php')); ?>" class="stack-form">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="trucktypeid" value="<?php echo h($type['trucktypeid']); ?>">

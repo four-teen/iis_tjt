@@ -3466,6 +3466,162 @@ textarea {
     overflow-wrap: anywhere;
 }
 
+.budget-hero {
+    border-left: 5px solid var(--primary);
+}
+
+.budget-section-tabs {
+    max-width: 680px;
+}
+
+.budget-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.budget-metric {
+    display: grid;
+    min-height: 118px;
+    align-content: start;
+    gap: 7px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-left: 4px solid #175cd3;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 8px 20px rgba(24, 33, 47, 0.04);
+}
+
+.budget-metric-success {
+    border-left-color: #12b76a;
+}
+
+.budget-metric-muted {
+    border-left-color: var(--accent);
+}
+
+.budget-metric span,
+.budget-metric small {
+    color: var(--muted);
+}
+
+.budget-metric span {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.budget-metric strong {
+    font-size: 26px;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+}
+
+.budget-filter-bar {
+    grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.45fr) minmax(150px, 0.4fr) auto;
+    margin: 0;
+}
+
+.budget-filter-bar select,
+.budget-filter-bar input {
+    min-height: 40px;
+}
+
+.budget-dispatch-table,
+.budget-route-table {
+    min-width: 1180px;
+}
+
+.budget-dispatch-table td > span,
+.budget-dispatch-table td strong + span {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.budget-inline-form {
+    display: grid;
+    grid-template-columns: minmax(110px, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 210px;
+    margin: 0;
+}
+
+.budget-inline-form input {
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    text-align: right;
+}
+
+.budget-modal-card {
+    width: min(94vw, 1120px);
+}
+
+.budget-modal-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.7fr);
+    align-items: start;
+    gap: 16px;
+}
+
+.budget-facts {
+    padding: 14px;
+    border: 1px solid #d9e4ee;
+    border-radius: var(--radius);
+    background: #f8fafc;
+}
+
+.budget-release-panel {
+    padding: 14px;
+    border: 1px solid #d9e4ee;
+    border-radius: var(--radius);
+    background: #ffffff;
+}
+
+.budget-release-panel label,
+.owner-budget-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.budget-release-panel input,
+.budget-release-panel select,
+.owner-budget-form input {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #ffffff;
+}
+
+.budget-ledger {
+    margin-top: 18px;
+}
+
+.panel-header.compact {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.owner-budget-form {
+    margin-bottom: 16px;
+    padding: 14px;
+    border: 1px solid #d9e4ee;
+    border-radius: var(--radius);
+    background: #f8fafc;
+}
+
 @media (max-width: 900px) {
     .sidebar {
         transform: translateX(-100%);
@@ -3510,6 +3666,8 @@ textarea {
     .fleet-profile-hero,
     .readiness-hero,
     .readiness-board,
+    .budget-summary-grid,
+    .budget-modal-grid,
     .coordinator-layout,
     .dispatch-page-layout,
     .dispatch-form,
@@ -3526,6 +3684,7 @@ textarea {
     }
 
     .readiness-summary-grid,
+    .budget-filter-bar,
     .cs-metric-grid,
     .booking-command-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3661,6 +3820,9 @@ textarea {
     .fleet-key-details,
     .fleet-spec-list,
     .readiness-summary-grid,
+    .budget-summary-grid,
+    .budget-filter-bar,
+    .budget-modal-grid,
     .cs-metric-grid,
     .booking-command-grid,
     .booking-manifest-meta,
@@ -3728,6 +3890,7 @@ textarea {
     .dispatch-card-details,
     .dispatch-date-grid,
     .dispatch-crew-grid,
+    .budget-inline-form,
     .dispatch-preview-list div,
     .dispatch-booking-list .dispatch-booking-split {
         grid-template-columns: 1fr;

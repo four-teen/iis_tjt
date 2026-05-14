@@ -25,7 +25,8 @@ $navGroups = [
             'key' => 'dashboard',
             'label' => 'Dashboard',
             'icon' => 'dashboard',
-            'url' => app_url('administrator/index.php'),
+            'url' => app_url('Administrator/index.php'),
+            'required_role' => 'Administrator',
         ],
     ],
     'Administration' => [
@@ -33,7 +34,7 @@ $navGroups = [
             'key' => 'accounts',
             'label' => 'Accounts',
             'icon' => 'shield',
-            'url' => app_url('administrator/accounts.php'),
+            'url' => app_url('Administrator/accounts.php'),
             'required_role' => 'Administrator',
         ],
     ],
@@ -42,14 +43,14 @@ $navGroups = [
             'key' => 'employees',
             'label' => 'Employees & Crews',
             'icon' => 'users',
-            'url' => app_url('administrator/employees.php'),
+            'url' => app_url('Administrator/employees.php'),
             'required_role' => 'Administrator',
         ],
         [
             'key' => 'customers',
             'label' => 'Customers',
             'icon' => 'building',
-            'url' => app_url('administrator/customers.php'),
+            'url' => app_url('Administrator/customers.php'),
             'required_role' => 'Administrator',
         ],
     ],
@@ -58,7 +59,7 @@ $navGroups = [
             'key' => 'customer_service',
             'label' => 'Bookings',
             'icon' => 'calendar',
-            'url' => app_url('administrator/customer_service.php'),
+            'url' => app_url('Customer%20Service/index.php'),
             'required_roles' => ['Administrator', 'Customer Service'],
         ],
     ],
@@ -67,8 +68,17 @@ $navGroups = [
             'key' => 'coordinator',
             'label' => 'Coordinator',
             'icon' => 'truck',
-            'url' => app_url('administrator/coordinator.php'),
+            'url' => app_url('Coordinator/index.php'),
             'required_roles' => ['Administrator', 'Coordinator'],
+        ],
+    ],
+    'Finance' => [
+        [
+            'key' => 'budget',
+            'label' => 'Budget',
+            'icon' => 'wallet',
+            'url' => app_url('Budget/index.php'),
+            'required_roles' => ['Administrator', 'Budget', 'Finance'],
         ],
     ],
     'Operations Setup' => [
@@ -76,28 +86,28 @@ $navGroups = [
             'key' => 'locations',
             'label' => 'Locations',
             'icon' => 'map',
-            'url' => app_url('administrator/locations.php'),
+            'url' => app_url('Administrator/locations.php'),
             'required_role' => 'Administrator',
         ],
         [
             'key' => 'delivery_types',
             'label' => 'Delivery Types',
             'icon' => 'clipboard',
-            'url' => app_url('administrator/delivery_types.php'),
+            'url' => app_url('Administrator/delivery_types.php'),
             'required_role' => 'Administrator',
         ],
         [
             'key' => 'truck_types',
             'label' => 'Truck Types',
             'icon' => 'truck',
-            'url' => app_url('administrator/truck_types.php'),
+            'url' => app_url('Administrator/truck_types.php'),
             'required_role' => 'Administrator',
         ],
         [
             'key' => 'fleet',
             'label' => 'Fleet',
             'icon' => 'truck',
-            'url' => app_url('administrator/fleet.php'),
+            'url' => app_url('Administrator/fleet.php'),
             'required_role' => 'Administrator',
         ],
     ],
@@ -179,7 +189,8 @@ $navGroups = [
                             <?php endif; ?>
                             <?php if ($item['key'] === 'coordinator' && $coordinatorSidebarCounts !== null): ?>
                                 <?php
-                                $activeCoordinatorStatus = $coordinatorStatus ?: (basename($_SERVER['SCRIPT_NAME'] ?? '') === 'coordinator.php' ? 'booked' : '');
+                                $currentScript = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+                                $activeCoordinatorStatus = $coordinatorStatus ?: (strpos($currentScript, '/Coordinator/') !== false ? 'booked' : '');
                                 $coordinatorQueueLinks = [
                                     'booked' => [
                                         'label' => 'Booked',
@@ -197,7 +208,7 @@ $navGroups = [
                                 ?>
                                 <div class="sidebar-subnav" aria-label="Coordinator queues">
                                     <?php foreach ($coordinatorQueueLinks as $queueKey => $queue): ?>
-                                        <a class="sidebar-subnav-link <?php echo h($activeCoordinatorStatus === $queueKey ? 'active' : ''); ?>" href="<?php echo h(app_url('administrator/coordinator.php?status=' . $queueKey)); ?>">
+                                        <a class="sidebar-subnav-link <?php echo h($activeCoordinatorStatus === $queueKey ? 'active' : ''); ?>" href="<?php echo h(app_url('Coordinator/index.php?status=' . $queueKey)); ?>">
                                             <span><?php echo h($queue['label']); ?></span>
                                             <strong><?php echo h($queue['count']); ?></strong>
                                         </a>

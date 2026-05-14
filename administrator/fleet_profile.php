@@ -11,12 +11,12 @@ $fleet = find_fleet_by_id($fleetId);
 
 if (!$fleet) {
     flash('error', 'Fleet record was not found.');
-    redirect_to('administrator/fleet.php');
+    redirect_to('Administrator/fleet.php');
 }
 
 $pageTitle = 'Fleet Profile';
 $activeNav = 'fleet';
-$returnUrl = 'administrator/fleet_profile.php?fleetid=' . $fleetId;
+$returnUrl = 'Administrator/fleet_profile.php?fleetid=' . $fleetId;
 
 function fleet_profile_is_filled($value)
 {
@@ -372,7 +372,7 @@ require APP_ROOT . '/partials/admin_header.php';
         </div>
     </div>
     <div class="fleet-hero-actions">
-        <a class="btn btn-light btn-icon" href="<?php echo h(app_url('administrator/fleet.php')); ?>"><?php echo icon('arrow-left'); ?> Back to Fleet</a>
+        <a class="btn btn-light btn-icon" href="<?php echo h(app_url('Administrator/fleet.php')); ?>"><?php echo icon('arrow-left'); ?> Back to Fleet</a>
         <div class="fleet-completion" aria-label="Profile completion">
             <div>
                 <span>Profile completeness</span>
